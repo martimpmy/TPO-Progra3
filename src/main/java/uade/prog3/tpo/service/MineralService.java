@@ -15,38 +15,44 @@ public class MineralService {
 
     private final Ordenamiento ordenamiento;
 
+    public MineralService() {
+        this.ordenamiento = new Ordenamiento();
+    }
+
     public MineralService(Ordenamiento ordenamiento) {
-        this.ordenamiento = ordenamiento;
+        this.ordenamiento = ordenamiento != null ? ordenamiento : new Ordenamiento();
     }
 
     /**
      * Catálogo canónico de minerales del dominio "Odisea Galáctica".
+     * Pesos y valores enteros positivos (Z+).
      */
     public List<Mineral> obtenerMineralesPorDefecto() {
         return List.of(
-                new Mineral("Cristal de Taquiones", 6.0, 66.0),
-                new Mineral("Núcleo de Plasma", 5.0, 50.0),
-                new Mineral("Aleación de Titanio", 5.0, 50.0),
-                new Mineral("Fragmento de Antimateria", 2.0, 30.0),
-                new Mineral("Lingote de Iridio", 4.0, 44.0),
-                new Mineral("Celdas de Helio-3", 3.0, 27.0)
+                new Mineral("Cristal de Taquiones", 6, 66),
+                new Mineral("Núcleo de Plasma", 5, 50),
+                new Mineral("Aleación de Titanio", 5, 50),
+                new Mineral("Fragmento de Antimateria", 2, 30),
+                new Mineral("Lingote de Iridio", 4, 44),
+                new Mineral("Celdas de Helio-3", 3, 27)
         );
     }
 
     /**
      * Ordena una lista de minerales según el algoritmo y criterio especificado.
-     * Si la lista provista es nula o vacía, se utiliza el catálogo canónico por defecto.
+     * Solo si dtos es null (body ausente) se usa el catálogo por defecto.
+     * Si dtos es una lista vacía ([]), se procesa y devuelve vacía.
      */
     public OrdenamientoResponseDTO ordenar(List<MineralDTO> dtos, String algoritmo, String criterio, String direccion) {
         List<Mineral> minerales;
-        if (dtos == null || dtos.isEmpty()) {
+        if (dtos == null) {
             minerales = new ArrayList<>(obtenerMineralesPorDefecto());
         } else {
             minerales = dtos.stream().map(MineralDTO::toModel).toList();
         }
 
         Comparator<Mineral> comparadorBase = obtenerComparador(criterio);
-        boolean descendente = direccion == null || direccion.equalsIgnoreCase("desc") || direccion.equalsIgnoreCase("descendente");
+        boolean descendente = resolverDireccion(direccion);
         Comparator<Mineral> comparadorFinal = descendente ? comparadorBase.reversed() : comparadorBase;
 
         String algoNormalizado = algoritmo != null ? algoritmo.trim().toLowerCase() : "quicksort";
@@ -75,6 +81,21 @@ public class MineralService {
                 criterio != null ? criterio.toLowerCase() : "ratio",
                 resultadoDTO
         );
+    }
+
+    private boolean resolverDireccion(String direccion) {
+        if (direccion == null || direccion.isBlank()) {
+            return true; // Default descendente para rentabilidad / valor
+        }
+        String dir = direccion.trim().toLowerCase();
+        if (dir.equals("desc") || dir.equals("descendente")) {
+            return true;
+        }
+        if (dir.equals("asc") || dir.equals("ascendente")) {
+            return false;
+        }
+        throw new IllegalArgumentException(
+                "Dirección inválida: '" + direccion + "'. Opciones válidas: 'desc', 'asc'.");
     }
 
     private Comparator<Mineral> obtenerComparador(String criterio) {

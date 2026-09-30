@@ -38,7 +38,7 @@ Ordenamiento propio de lotes de minerales y recursos comerciales aplicando la t�
 - `direccion` *(opcional, default: `desc`)*: `desc` (descendente) o `asc` (ascendente).
 
 **Cuerpo de Entrada (Request Body - Opcional):**
-Si se omite o está vacío, se utiliza el catálogo canónico de minerales por defecto.
+Si se omite (`null`), se utiliza el catálogo canónico de minerales por defecto. Si se envía un arreglo vacío (`[]`), se procesa y devuelve una lista vacía.
 ```json
 [
   { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66 },
@@ -56,9 +56,9 @@ Si se omite o está vacío, se utiliza el catálogo canónico de minerales por d
   "algoritmoUtilizado": "QuickSort (Propio)",
   "criterio": "ratio",
   "resultado": [
-    { "nombre": "Cristal de Taquiones", "peso": 6.0, "valor": 66.0, "ratio": 11.0 },
-    { "nombre": "Núcleo de Plasma", "peso": 5.0, "valor": 50.0, "ratio": 10.0 },
-    { "nombre": "Aleación de Titanio", "peso": 5.0, "valor": 50.0, "ratio": 10.0 }
+    { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66, "ratio": 11.0 },
+    { "nombre": "Núcleo de Plasma", "peso": 5, "valor": 50, "ratio": 10.0 },
+    { "nombre": "Aleación de Titanio", "peso": 5, "valor": 50, "ratio": 10.0 }
   ]
 }
 ```
@@ -82,16 +82,25 @@ Si se omite o está vacío, se utiliza el catálogo canónico de minerales por d
   "mensaje": "Criterio inválido: 'color'. Opciones válidas: 'valor', 'peso', 'ratio'."
 }
 ```
+- Si se envía una dirección inválida (ej. `direccion=aleatoria`):
+```json
+{
+  "fecha": "2026-09-30T10:00:00",
+  "codigo": 400,
+  "error": "Bad Request",
+  "mensaje": "Dirección inválida: 'aleatoria'. Opciones válidas: 'desc', 'asc'."
+}
+```
 
 **Justificación de Complejidad y Análisis Teórico:**
 1. **QuickSort:**
-   - *Estrategia del Pivote:* Mediana de tres (bajo, medio, alto) para particionado equilibrado in-place y prevención del caso degenerado en colecciones ordenadas.
+   - *Estrategia del Pivote y Particionado:* Mediana de Tres (bajo, medio, alto) + **Partición de Tres Vías (Dijkstra / Dutch National Flag)**. Los elementos iguales al pivote se agrupan en su posición definitiva en una sola pasada $O(N)$, eliminando la degradación a $O(N^2)$ ante claves repetidas masivas.
+   - *Optimización de Llamada de Cola (Tail-Call Optimization):* La recursión se ejecuta sobre la partición menor y se itera sobre la mayor, acotando la profundidad de pila a **$O(\log N)$ garantizado** e impidiendo cualquier `StackOverflowError`.
    - *Recurrencia promedio:* $T(N) = 2T(N/2) + O(N)$.
    - *Teorema Maestro:* $a=2, b=2, k=1 \implies \log_2(2) = 1 = k \implies$ Caso 2: $O(N \log N)$ promedio.
-   - *Peor caso:* $O(N^2)$ si el pivote resulta ser sistemáticamente el extremo absoluto.
-   - *Espacio auxiliar:* $O(\log N)$ en el stack recursivo de llamadas.
+   - *Peor caso teórico:* $O(N^2)$ si todos los elementos son distintos y el pivote resulta ser sistemáticamente el extremo.
 2. **MergeSort:**
-   - *Estabilidad:* Garantizada mediante comparación estricta/inclusiva (`<=`) al mezclar las mitades ordenadas.
+   - *Estabilidad:* Garantizada mediante comparación inclusiva (`<=`) al fusionar las mitades ordenadas.
    - *Recurrencia:* $T(N) = 2T(N/2) + O(N)$.
    - *Complejidad temporal:* $O(N \log N)$ garantizada en el mejor, peor y promedio caso.
    - *Espacio auxiliar:* $O(N)$ para las sublistas de mezcla en memoria.
