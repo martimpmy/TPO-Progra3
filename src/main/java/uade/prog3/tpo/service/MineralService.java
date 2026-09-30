@@ -15,7 +15,6 @@ import uade.prog3.tpo.exception.MineralNoEncontradoException;
 import uade.prog3.tpo.model.Mineral;
 import uade.prog3.tpo.repository.MineralRepository;
 
-
 @Service
 public class MineralService {
 
@@ -109,40 +108,33 @@ public class MineralService {
                 "Dirección inválida: '" + direccion + "'. Opciones válidas: 'desc', 'asc'.");
     }
 
-    @Transactional(readOnly = true)
-public GreedyResponseDTO cargarGreedy(
-        List<MineralDTO> dtos,
-        double capacidad
-) {
+    /** Hito 3: carga rápida por ratio valor/peso sobre los minerales recibidos en el request. */
+    public GreedyResponseDTO cargarGreedy(List<MineralDTO> dtos, Double capacidad) {
+        if (capacidad == null) {
+            throw new IllegalArgumentException("Falta 'capacidadBodega'");
+        }
+        if (capacidad < 0) {
+            throw new IllegalArgumentException("La capacidad de la bodega no puede ser negativa");
+        }
+        if (dtos == null || dtos.isEmpty()) {
+            throw new IllegalArgumentException("Se debe enviar al menos un mineral en 'itemsDisponibles'");
+        }
 
-    if (capacidad < 0) {
-        throw new IllegalArgumentException(
-                "La capacidad de la bodega no puede ser negativa"
+        GreedyCarga.ResultadoGreedy resultado = greedyCarga.cargar(aModelos(dtos), capacidad);
+
+        return new GreedyResponseDTO(
+                "Greedy (Selección por Ratio Valor/Peso)",
+                capacidad,
+                redondear(resultado.pesoOcupado()),
+                redondear(resultado.valorTotal()),
+                resultado.minerales().stream().map(MineralDTO::fromModel).toList()
         );
     }
 
-    if (dtos == null || dtos.isEmpty()) {
-        throw new IllegalArgumentException(
-                "Se debe enviar al menos un mineral"
-        );
+    /** Evita mostrar sumas como 0.30000000000000004 en la respuesta. */
+    private double redondear(double x) {
+        return Math.round(x * 1e6) / 1e6;
     }
-
-    List<Mineral> minerales = aModelos(dtos);
-
-    GreedyCarga.ResultadoGreedy resultado =
-            greedyCarga.cargar(minerales, capacidad);
-
-    return new GreedyResponseDTO(
-            "Greedy (Selección por Ratio Valor/Peso)",
-            capacidad,
-            resultado.pesoOcupado(),
-            resultado.valorTotal(),
-            resultado.minerales()
-                    .stream()
-                    .map(MineralDTO::fromModel)
-                    .toList()
-    );
-}
 
     private Comparator<Mineral> obtenerComparador(String criterio) {
         String crit = criterio != null ? criterio.trim().toLowerCase() : "ratio";
