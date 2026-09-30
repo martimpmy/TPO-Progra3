@@ -97,7 +97,7 @@
         <div class="card">
           <div class="card-title">
             <span>📦 Inventario de Minerales en Bodega</span>
-            <span id="contadorMinerales" class="badge">6 lotes</span>
+            <span id="contadorMinerales" class="badge">0 lotes</span>
           </div>
 
           <div style="overflow-x: auto; max-height: 320px;">
@@ -108,6 +108,7 @@
                   <th>Peso (t)</th>
                   <th>Valor</th>
                   <th>Rentabilidad</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="mineralesTableBody">
@@ -119,8 +120,8 @@
           <!-- Formulario rápido para agregar minerales de prueba -->
           <form class="add-form-row" onsubmit="return false;">
             <input type="text" id="nuevoNombre" placeholder="Mineral (ej: Criptonita)" required>
-            <input type="number" id="nuevoPeso" placeholder="Peso (t)" min="0.1" step="0.1" required>
-            <input type="number" id="nuevoValor" placeholder="Valor (CG)" min="1" step="1" required>
+            <input type="number" id="nuevoPeso" placeholder="Peso (t)" min="0.01" step="any" required>
+            <input type="number" id="nuevoValor" placeholder="Valor (CG)" min="0" step="any" required>
             <button id="btnAgregarMineral" class="btn-secondary" type="button">+ Agregar</button>
           </form>
         </div>
