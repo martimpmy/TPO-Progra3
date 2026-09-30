@@ -4,8 +4,8 @@ import uade.prog3.tpo.model.Mineral;
 
 public record MineralDTO(
         String nombre,
-        double peso,
-        double valor,
+        int peso,
+        int valor,
         Double ratio
 ) {
     public static MineralDTO fromModel(Mineral mineral) {
