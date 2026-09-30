@@ -5,18 +5,23 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import uade.prog3.tpo.algorithm.GreedyCarga;
 import uade.prog3.tpo.algorithm.Ordenamiento;
+import uade.prog3.tpo.dto.GreedyResponseDTO;
 import uade.prog3.tpo.dto.MineralDTO;
 import uade.prog3.tpo.dto.OrdenamientoResponseDTO;
 import uade.prog3.tpo.exception.MineralNoEncontradoException;
 import uade.prog3.tpo.model.Mineral;
 import uade.prog3.tpo.repository.MineralRepository;
 
+
 @Service
 public class MineralService {
 
     private final MineralRepository mineralRepository;
     private final Ordenamiento ordenamiento = new Ordenamiento();
+    private final GreedyCarga greedyCarga = new GreedyCarga();
 
     public MineralService(MineralRepository mineralRepository) {
         this.mineralRepository = mineralRepository;
@@ -103,6 +108,41 @@ public class MineralService {
         throw new IllegalArgumentException(
                 "Dirección inválida: '" + direccion + "'. Opciones válidas: 'desc', 'asc'.");
     }
+
+    @Transactional(readOnly = true)
+public GreedyResponseDTO cargarGreedy(
+        List<MineralDTO> dtos,
+        double capacidad
+) {
+
+    if (capacidad < 0) {
+        throw new IllegalArgumentException(
+                "La capacidad de la bodega no puede ser negativa"
+        );
+    }
+
+    if (dtos == null || dtos.isEmpty()) {
+        throw new IllegalArgumentException(
+                "Se debe enviar al menos un mineral"
+        );
+    }
+
+    List<Mineral> minerales = aModelos(dtos);
+
+    GreedyCarga.ResultadoGreedy resultado =
+            greedyCarga.cargar(minerales, capacidad);
+
+    return new GreedyResponseDTO(
+            "Greedy (Selección por Ratio Valor/Peso)",
+            capacidad,
+            resultado.pesoOcupado(),
+            resultado.valorTotal(),
+            resultado.minerales()
+                    .stream()
+                    .map(MineralDTO::fromModel)
+                    .toList()
+    );
+}
 
     private Comparator<Mineral> obtenerComparador(String criterio) {
         String crit = criterio != null ? criterio.trim().toLowerCase() : "ratio";
