@@ -6,24 +6,24 @@ import java.util.Objects;
  * Entidad de dominio que representa un lote de minerales o recursos comerciales
  * disponibles para ser transportados en la bodega de carga de la nave espacial.
  *
- * Cada mineral posee un peso físico (en toneladas métricas) y un valor comercial
- * (en Créditos Galácticos).
+ * Cada mineral posee un peso físico (en toneladas métricas enteras w_i ∈ Z+)
+ * y un valor comercial (en Créditos Galácticos enteros v_i ∈ Z+).
  */
 public class Mineral {
 
     private String id;
     private String nombre;
-    private double peso;
-    private double valor;
+    private int peso;
+    private int valor;
 
     public Mineral() {
     }
 
-    public Mineral(String nombre, double peso, double valor) {
+    public Mineral(String nombre, int peso, int valor) {
         this(nombre != null ? nombre.toLowerCase().replace(" ", "_") : null, nombre, peso, valor);
     }
 
-    public Mineral(String id, String nombre, double peso, double valor) {
+    public Mineral(String id, String nombre, int peso, int valor) {
         if (peso <= 0) {
             throw new IllegalArgumentException("El peso del mineral debe ser mayor a 0");
         }
@@ -52,22 +52,22 @@ public class Mineral {
         this.nombre = nombre;
     }
 
-    public double getPeso() {
+    public int getPeso() {
         return peso;
     }
 
-    public void setPeso(double peso) {
+    public void setPeso(int peso) {
         if (peso <= 0) {
             throw new IllegalArgumentException("El peso del mineral debe ser mayor a 0");
         }
         this.peso = peso;
     }
 
-    public double getValor() {
+    public int getValor() {
         return valor;
     }
 
-    public void setValor(double valor) {
+    public void setValor(int valor) {
         if (valor < 0) {
             throw new IllegalArgumentException("El valor del mineral no puede ser negativo");
         }
@@ -78,7 +78,7 @@ public class Mineral {
      * Ratio comercial rentabilidad = valor / peso (Créditos Galácticos por tonelada).
      */
     public double getRatio() {
-        return peso > 0 ? valor / peso : 0.0;
+        return peso > 0 ? (double) valor / peso : 0.0;
     }
 
     @Override
@@ -86,8 +86,8 @@ public class Mineral {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Mineral mineral = (Mineral) o;
-        return Double.compare(mineral.peso, peso) == 0 &&
-                Double.compare(mineral.valor, valor) == 0 &&
+        return peso == mineral.peso &&
+                valor == mineral.valor &&
                 Objects.equals(nombre, mineral.nombre);
     }
 

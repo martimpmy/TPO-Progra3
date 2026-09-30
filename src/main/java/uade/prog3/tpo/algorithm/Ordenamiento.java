@@ -4,39 +4,45 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.stereotype.Component;
-
 /**
  * UNIDAD: Divide y Vencerás (Hito 2) - PUNTAJE: 1 punto
  *
  * Implementaciones algorítmicas puras de QuickSort y MergeSort.
  *
- * REGLAS DE CÁTEDRA:
+ * POLÍTICAS ARQUITECTÓNICAS (Sección 3.2 del TPO):
+ * - Código Java puro y agnóstico: Sin anotaciones de frameworks (@Component, etc.).
  * - Prohibido el uso de Collections.sort() y Arrays.sort().
  * - No modifica la lista original de entrada (devuelve una nueva lista ordenada).
  * - Partición y mezcla implementadas completamente a mano.
  */
-@Component
 public class Ordenamiento {
 
     /**
-     * QuickSort sobre una lista de elementos según un criterio de comparación.
+     * QuickSort sobre una lista de elementos según un comparador.
      *
-     * ESTRATEGIA DE PIVOTE:
-     * Se implementa la técnica de "Mediana de Tres" (evaluando los elementos en los índices
-     * bajo, medio y alto del subarreglo actual). Esta técnica evita que el algoritmo caiga
-     * en el peor caso O(N^2) cuando los datos de entrada ya están ordenados o en orden inverso,
-     * garantizando un balance estadísticamente óptimo de particionado.
+     * ESTRATEGIA DE PARTICIONADO Y PIVOTE:
+     * 1. Mediana de Tres: Se evalúan los elementos en los índices bajo, medio y alto
+     *    para seleccionar el pivote, evitando degradación en arreglos previamente ordenados.
+     * 2. Partición de Tres Vías (Dijkstra / Dutch National Flag):
+     *    Divide el arreglo en tres segmentos contiguos:
+     *      [bajo .. lt-1]  -> estrictamente MENORES al pivote
+     *      [lt .. gt]      -> estrictamente IGUALES al pivote
+     *      [gt+1 .. alto]  -> estrictamente MAYORES al pivote
+     *    Los elementos con clave idéntica quedan en su posición definitiva en O(N)
+     *    y NO se vuelven a procesar recursivamente, resolviendo el peor caso O(N^2)
+     *    provocado por claves repetidas.
+     * 3. Eliminación de Recursión por la Cola (Tail-Call Optimization):
+     *    Se procesa recursivamente siempre la partición de menor tamaño y se itera sobre
+     *    la de mayor tamaño en un bucle while. Esto garantiza matemáticamente que la
+     *    profundidad máxima de la pila de llamadas (call stack) sea estrictamente O(log N),
+     *    inmune a StackOverflowError incluso con cientos de miles de elementos.
      *
      * ANÁLISIS DE COMPLEJIDAD:
-     * - Recurrencia (caso promedio): T(N) = 2T(N/2) + O(N).
-     * - Por Teorema Maestro (Caso 2: a=2, b=2, k=1 -> log_2(2) = 1 = k):
-     *   Complejidad temporal promedio: O(N log N).
-     * - Peor caso: O(N^2) si sistemáticamente el pivote seleccionado resulta ser el mínimo
-     *   o el máximo absoluto en cada paso (desbalance extremo de partición).
-     * - Complejidad espacial auxiliar: O(log N) por el stack de llamadas recursivas.
+     * - Recurrencia promedio: T(N) = 2T(N/2) + O(N) -> O(N log N) por Teorema Maestro.
+     * - Claves repetidas masivas: O(N) lineal.
+     * - Complejidad espacial auxiliar: O(log N) garantizado en pila.
      *
-     * @param items    Colección de elementos a ordenar (no es modificada).
+     * @param items    Colección de elementos a ordenar (no modificada).
      * @param criterio Comparador que define la relación de orden.
      * @param <T>      Tipo del elemento.
      * @return Nueva lista ordenada según el criterio provisto.
@@ -54,29 +60,46 @@ public class Ordenamiento {
     }
 
     private <T> void quickSortRecursivo(List<T> lista, int bajo, int alto, Comparator<T> criterio) {
-        if (bajo < alto) {
-            int indicePivote = particionar(lista, bajo, alto, criterio);
-            quickSortRecursivo(lista, bajo, indicePivote - 1, criterio);
-            quickSortRecursivo(lista, indicePivote + 1, alto, criterio);
-        }
-    }
+        while (bajo < alto) {
+            // Selección del pivote por Mediana de Tres
+            int medio = bajo + (alto - bajo) / 2;
+            int indicePivote = medianaDeTres(lista, bajo, medio, alto, criterio);
+            intercambiar(lista, bajo, indicePivote); // Ubicamos el pivote al inicio del rango
 
-    private <T> int particionar(List<T> lista, int bajo, int alto, Comparator<T> criterio) {
-        int medio = bajo + (alto - bajo) / 2;
-        int indiceMediana = medianaDeTres(lista, bajo, medio, alto, criterio);
-        intercambiar(lista, indiceMediana, alto);
+            T pivote = lista.get(bajo);
+            int lt = bajo;
+            int gt = alto;
+            int i = bajo + 1;
 
-        T pivote = lista.get(alto);
-        int i = bajo - 1;
+            // Partición de 3 vías (Dijkstra)
+            while (i <= gt) {
+                int cmp = criterio.compare(lista.get(i), pivote);
+                if (cmp < 0) {
+                    intercambiar(lista, lt++, i++);
+                } else if (cmp > 0) {
+                    intercambiar(lista, i, gt--);
+                } else {
+                    i++;
+                }
+            }
 
-        for (int j = bajo; j < alto; j++) {
-            if (criterio.compare(lista.get(j), pivote) <= 0) {
-                i++;
-                intercambiar(lista, i, j);
+            // Subarreglos resultantes: [bajo .. lt - 1] y [gt + 1 .. alto]
+            // Optimización de llamada de cola: recurrir en la mitad más chica
+            int tamanoIzq = lt - 1 - bajo;
+            int tamanoDer = alto - (gt + 1);
+
+            if (tamanoIzq < tamanoDer) {
+                if (tamanoIzq > 0) {
+                    quickSortRecursivo(lista, bajo, lt - 1, criterio);
+                }
+                bajo = gt + 1; // Iterar sobre la parte derecha más grande
+            } else {
+                if (tamanoDer > 0) {
+                    quickSortRecursivo(lista, gt + 1, alto, criterio);
+                }
+                alto = lt - 1; // Iterar sobre la parte izquierda más grande
             }
         }
-        intercambiar(lista, i + 1, alto);
-        return i + 1;
     }
 
     private <T> int medianaDeTres(List<T> lista, int a, int b, int c, Comparator<T> criterio) {
@@ -102,7 +125,7 @@ public class Ordenamiento {
     }
 
     /**
-     * MergeSort sobre una lista de elementos según un criterio de comparación.
+     * MergeSort sobre una lista de elementos según un comparador.
      *
      * ESTABILIDAD:
      * El algoritmo es ESTABLE: en el paso de mezcla (merge), ante dos elementos equivalentes

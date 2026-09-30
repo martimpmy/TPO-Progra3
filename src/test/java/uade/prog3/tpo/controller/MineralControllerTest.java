@@ -7,7 +7,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import uade.prog3.tpo.algorithm.Ordenamiento;
 import uade.prog3.tpo.service.MineralService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,14 +15,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(MineralController.class)
-@Import({MineralService.class, Ordenamiento.class})
+@Import(MineralService.class)
 class MineralControllerTest {
 
     @Autowired
     private MockMvc mvc;
 
     @Test
-    @DisplayName("POST /api/minerales/ordenar con body ordena correctamente por ratio")
+    @DisplayName("POST /api/minerales/ordenar con body ordena correctamente por ratio y devuelve enteros en peso y valor")
     void ordenarConBodyPost() throws Exception {
         String jsonBody = """
                 [
@@ -43,9 +42,22 @@ class MineralControllerTest {
                 .andExpect(jsonPath("$.algoritmoUtilizado").value("QuickSort (Propio)"))
                 .andExpect(jsonPath("$.criterio").value("ratio"))
                 .andExpect(jsonPath("$.resultado[0].nombre").value("Cristal de Taquiones"))
+                .andExpect(jsonPath("$.resultado[0].peso").value(6))
+                .andExpect(jsonPath("$.resultado[0].valor").value(66))
                 .andExpect(jsonPath("$.resultado[0].ratio").value(11.0))
                 .andExpect(jsonPath("$.resultado[1].ratio").value(10.0))
                 .andExpect(jsonPath("$.resultado[2].ratio").value(10.0));
+    }
+
+    @Test
+    @DisplayName("POST /api/minerales/ordenar con body vacío [] devuelve resultado vacío []")
+    void ordenarConBodyVacio() throws Exception {
+        mvc.perform(post("/api/minerales/ordenar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultado").isArray())
+                .andExpect(jsonPath("$.resultado").isEmpty());
     }
 
     @Test
@@ -58,7 +70,7 @@ class MineralControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.algoritmoUtilizado").value("MergeSort (Propio)"))
                 .andExpect(jsonPath("$.criterio").value("peso"))
-                .andExpect(jsonPath("$.resultado[0].peso").value(2.0)); // Fragmento de Antimateria
+                .andExpect(jsonPath("$.resultado[0].peso").value(2)); // Fragmento de Antimateria
     }
 
     @Test
@@ -81,6 +93,17 @@ class MineralControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value(400))
                 .andExpect(jsonPath("$.mensaje").isNotEmpty())
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Dirección inválida retorna 400 Bad Request estructurado sin stack trace")
+    void direccionInvalidaRetorna400() throws Exception {
+        mvc.perform(get("/api/minerales/ordenar")
+                        .param("direccion", "cualquiercosa"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value(400))
+                .andExpect(jsonPath("$.mensaje").value("Dirección inválida: 'cualquiercosa'. Opciones válidas: 'desc', 'asc'."))
                 .andExpect(jsonPath("$.trace").doesNotExist());
     }
 
