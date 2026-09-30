@@ -34,10 +34,11 @@ function inicializarInventario() {
     cargarMineralesPersistidos();
 
     const btnOrdenar = document.getElementById("btnEjecutarOrden");
-    const btnAgregar = document.getElementById("btnAgregarMineral");
+    const formAgregar = document.getElementById("formAgregarMineral");
 
     btnOrdenar.addEventListener("click", ejecutarOrdenamiento);
-    btnAgregar.addEventListener("click", agregarMineral);
+    // submit (botón o Enter); el navegador valida required/min antes de disparar el evento
+    formAgregar.addEventListener("submit", agregarMineral);
 
     // Actualizar recuadro teórico cuando cambie el algoritmo
     document.getElementById("selectAlgoritmo").addEventListener("change", actualizarTeoria);
@@ -72,8 +73,14 @@ function renderizarTablaMinerales(minerales, animar = false) {
 
     if (minerales.length === 0) {
         const tr = document.createElement("tr");
-        const td = celda("La bodega está vacía. Agregá minerales con el formulario.");
+        const td = celda("La bodega está vacía. Agregá minerales con el formulario o ");
         td.colSpan = 5;
+        const btnEjemplo = document.createElement("button");
+        btnEjemplo.type = "button";
+        btnEjemplo.className = "btn-secondary";
+        btnEjemplo.textContent = "cargá el ejemplo del PDF";
+        btnEjemplo.addEventListener("click", cargarEjemplo);
+        td.appendChild(btnEjemplo);
         tr.appendChild(td);
         tbody.appendChild(tr);
     }
@@ -110,11 +117,55 @@ function renderizarTablaMinerales(minerales, animar = false) {
     document.getElementById("contadorMinerales").textContent = `${minerales.length} lotes`;
 }
 
+// Contraejemplo Greedy vs PD del informe (sección 5.6) + tres lotes extra
+const MINERALES_EJEMPLO = [
+    { nombre: "Cristal de Taquiones", peso: 6, valor: 66 },
+    { nombre: "Núcleo de Plasma", peso: 5, valor: 50 },
+    { nombre: "Aleación de Titanio", peso: 5, valor: 50 },
+    { nombre: "Fragmento de Antimateria", peso: 2, valor: 30 },
+    { nombre: "Lingote de Iridio", peso: 4, valor: 44 },
+    { nombre: "Celdas de Helio-3", peso: 3, valor: 27 }
+];
+
+async function cargarEjemplo(e) {
+    e.target.disabled = true;
+    e.target.textContent = "Guardando en AuraDB...";
+    await guardarMinerales(MINERALES_EJEMPLO);
+}
+
+/** POST /api/minerales y recarga la tabla. Devuelve true si se guardó. */
+async function guardarMinerales(lista) {
+    try {
+        const response = await fetch("/api/minerales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(lista)
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            alert(`Error (${err.codigo}): ${err.mensaje}`);
+            await cargarMineralesPersistidos();
+            return false;
+        }
+        await cargarMineralesPersistidos();
+        return true;
+    } catch (err) {
+        alert("Error de conexión al guardar en la base.");
+        await cargarMineralesPersistidos();
+        return false;
+    }
+}
+
 async function ejecutarOrdenamiento() {
     const algoritmo = document.getElementById("selectAlgoritmo").value;
     const criterio = document.getElementById("selectCriterio").value;
     const direccion = document.getElementById("selectDireccion").value;
     const btn = document.getElementById("btnEjecutarOrden");
+
+    if (mineralesEnBodega.length === 0) {
+        alert("La bodega está vacía: agregá minerales antes de ordenar.");
+        return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = "⚡ PROCESANDO DIVIDE Y VENCERÁS...";
@@ -178,23 +229,18 @@ async function agregarMineral(e) {
         return;
     }
 
-    try {
-        const response = await fetch("/api/minerales", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify([{ nombre, peso, valor }])
-        });
-        if (!response.ok) {
-            const err = await response.json();
-            alert(`Error (${err.codigo}): ${err.mensaje}`);
-            return;
-        }
+    const btn = document.getElementById("btnAgregarMineral");
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+    const ok = await guardarMinerales([{ nombre, peso, valor }]);
+    btn.disabled = false;
+    btn.textContent = "+ Agregar";
+
+    if (ok) {
         inputNombre.value = "";
         inputPeso.value = "";
         inputValor.value = "";
-        await cargarMineralesPersistidos();
-    } catch (err) {
-        alert("Error de conexión al guardar el mineral.");
+        inputNombre.focus();
     }
 }
 
