@@ -116,3 +116,52 @@ Persiste uno o más minerales en Neo4j. Si alguno es inválido no se guarda ning
 Elimina un mineral persistido.
 
 **Respuesta:** `204 No Content`. **Errores:** `404` si no existe el `id`.
+
+---
+
+### POST /api/bodega/cargar-greedy  (Hito 3)
+
+Carga rápida de la bodega con criterio **voraz**: toma primero los minerales de mayor
+ratio valor/peso mientras entren en la capacidad. **No garantiza el óptimo** de Mochila 0/1.
+
+**Cuerpo de Entrada:**
+```json
+{
+  "capacidadBodega": 10,
+  "itemsDisponibles": [
+    { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66 },
+    { "nombre": "Núcleo de Plasma", "peso": 5, "valor": 50 },
+    { "nombre": "Aleación de Titanio", "peso": 5, "valor": 50 }
+  ]
+}
+```
+
+**Respuesta (200 OK):**
+```json
+{
+  "metodo": "Greedy (Selección por Ratio Valor/Peso)",
+  "capacidadBodega": 10.0,
+  "pesoOcupado": 6.0,
+  "valorTotalObtenido": 66.0,
+  "mineralesCargados": [
+    { "nombre": "Cristal de Taquiones", "peso": 6.0, "valor": 66.0, "ratio": 11.0 }
+  ]
+}
+```
+Este es el contraejemplo del informe (sección 5.6): Greedy obtiene **66 CG**, mientras que
+el óptimo (Núcleo + Titanio) es **100 CG**. Si un mineral no entra, se saltea y se prueba el siguiente.
+
+**Errores (400 Bad Request):** falta `capacidadBodega` o es negativa; `itemsDisponibles`
+falta o está vacía; algún mineral inválido (sin nombre, sin valor, peso ≤ 0); JSON mal formado.
+
+**Componentes de la técnica voraz:**
+- *Candidatos:* los N minerales recibidos.
+- *Selección:* mayor ratio `valor / peso`.
+- *Factibilidad:* `pesoActual + peso ≤ capacidad` (con tolerancia 1e-9 para pesos decimales).
+- *Objetivo:* maximizar el valor en Créditos Galácticos.
+- *Solución:* termina al evaluar todos los minerales.
+
+**Complejidad:** O(N log N) — dominada por el ordenamiento por ratio; el recorrido posterior es O(N).
+**Espacio auxiliar:** O(N) — copia ordenada y lista de seleccionados.
+**Estructura usada:** lista ordenada con el **MergeSort propio** (estable: ante ratios iguales
+respeta el orden de entrada, así el resultado es determinístico).

@@ -11,6 +11,10 @@ import uade.prog3.tpo.dto.GreedyResponseDTO;
 import uade.prog3.tpo.dto.MineralDTO;
 import uade.prog3.tpo.service.MineralService;
 
+/**
+ * Carga de la bodega de la nave (Hito 3: Greedy).
+ * Sin lógica algorítmica: solo ruteo y delegación en MineralService.
+ */
 @RestController
 @RequestMapping("/api/bodega")
 public class CargaController {
@@ -26,13 +30,14 @@ public class CargaController {
             @RequestBody CargaGreedyRequest request
     ) {
         return mineralService.cargarGreedy(
-        request.itemsDisponibles(),
-        request.capacidadBodega()
+                request.itemsDisponibles(),
+                request.capacidadBodega()
         );
     }
 
+    /** capacidadBodega es Double para detectar si falta en el JSON (con double valdría 0). */
     public record CargaGreedyRequest(
-            double capacidadBodega,
+            Double capacidadBodega,
             List<MineralDTO> itemsDisponibles
     ) {
     }
