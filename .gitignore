@@ -1,0 +1,16 @@
+target/
+.mvn/timing.properties
+
+### IDE ###
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+### Secretos (NUNCA se commitean) ###
+.env
+*.env
+!.env.example
+application-local.properties
