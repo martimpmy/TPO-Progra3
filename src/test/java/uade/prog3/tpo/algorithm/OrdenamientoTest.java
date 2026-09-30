@@ -72,7 +72,7 @@ class OrdenamientoTest {
             listaGrande.add(new Mineral("M-" + i, rnd.nextInt(100) + 1, rnd.nextInt(1000) + 1));
         }
 
-        Comparator<Mineral> comp = Comparator.comparingInt(Mineral::getPeso);
+        Comparator<Mineral> comp = Comparator.comparingDouble(Mineral::getPeso);
 
         List<Mineral> resultado = ordenamiento.quickSort(listaGrande, comp);
 
@@ -108,15 +108,15 @@ class OrdenamientoTest {
     @Test
     @DisplayName("MergeSort ordena correctamente por peso de forma ascendente")
     void mergeSortOrdenaPorPesoAscendente() {
-        Comparator<Mineral> comp = Comparator.comparingInt(Mineral::getPeso);
+        Comparator<Mineral> comp = Comparator.comparingDouble(Mineral::getPeso);
 
         List<Mineral> ordenados = ordenamiento.mergeSort(mineralesEjemplo, comp);
 
         assertThat(ordenados).hasSize(4);
-        assertThat(ordenados.get(0).getPeso()).isEqualTo(2); // Antimateria
-        assertThat(ordenados.get(1).getPeso()).isEqualTo(5);
-        assertThat(ordenados.get(2).getPeso()).isEqualTo(5);
-        assertThat(ordenados.get(3).getPeso()).isEqualTo(6); // Taquiones
+        assertThat(ordenados.get(0).getPeso()).isEqualTo(2.0); // Antimateria
+        assertThat(ordenados.get(1).getPeso()).isEqualTo(5.0);
+        assertThat(ordenados.get(2).getPeso()).isEqualTo(5.0);
+        assertThat(ordenados.get(3).getPeso()).isEqualTo(6.0); // Taquiones
     }
 
     @Test
@@ -147,7 +147,7 @@ class OrdenamientoTest {
     @DisplayName("MergeSort no modifica la lista original de entrada")
     void mergeSortNoModificaListaOriginal() {
         List<Mineral> original = new ArrayList<>(mineralesEjemplo);
-        Comparator<Mineral> comp = Comparator.comparingInt(Mineral::getValor);
+        Comparator<Mineral> comp = Comparator.comparingDouble(Mineral::getValor);
 
         ordenamiento.mergeSort(original, comp);
 
@@ -157,7 +157,7 @@ class OrdenamientoTest {
     @Test
     @DisplayName("MergeSort maneja lista vacía y lista de un único elemento")
     void mergeSortCasosBorde() {
-        Comparator<Mineral> comp = Comparator.comparingInt(Mineral::getValor);
+        Comparator<Mineral> comp = Comparator.comparingDouble(Mineral::getValor);
 
         assertThat(ordenamiento.mergeSort(List.of(), comp)).isEmpty();
 
