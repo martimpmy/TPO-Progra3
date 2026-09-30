@@ -1,59 +1,60 @@
 package uade.prog3.tpo.service;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uade.prog3.tpo.algorithm.Ordenamiento;
 import uade.prog3.tpo.dto.MineralDTO;
 import uade.prog3.tpo.dto.OrdenamientoResponseDTO;
+import uade.prog3.tpo.exception.MineralNoEncontradoException;
 import uade.prog3.tpo.model.Mineral;
+import uade.prog3.tpo.repository.MineralRepository;
 
 @Service
 public class MineralService {
 
-    private final Ordenamiento ordenamiento;
+    private final MineralRepository mineralRepository;
+    private final Ordenamiento ordenamiento = new Ordenamiento();
 
-    public MineralService() {
-        this.ordenamiento = new Ordenamiento();
+    public MineralService(MineralRepository mineralRepository) {
+        this.mineralRepository = mineralRepository;
     }
 
-    public MineralService(Ordenamiento ordenamiento) {
-        this.ordenamiento = ordenamiento != null ? ordenamiento : new Ordenamiento();
+    @Transactional(readOnly = true)
+    public List<MineralDTO> listar() {
+        return mineralRepository.findAll().stream().map(MineralDTO::fromModel).toList();
     }
 
-    /**
-     * Catálogo canónico de minerales del dominio "Odisea Galáctica".
-     * Pesos y valores enteros positivos (Z+).
-     */
-    public List<Mineral> obtenerMineralesPorDefecto() {
-        return List.of(
-                new Mineral("Cristal de Taquiones", 6, 66),
-                new Mineral("Núcleo de Plasma", 5, 50),
-                new Mineral("Aleación de Titanio", 5, 50),
-                new Mineral("Fragmento de Antimateria", 2, 30),
-                new Mineral("Lingote de Iridio", 4, 44),
-                new Mineral("Celdas de Helio-3", 3, 27)
-        );
-    }
-
-    /**
-     * Ordena una lista de minerales según el algoritmo y criterio especificado.
-     * Solo si dtos es null (body ausente) se usa el catálogo por defecto.
-     * Si dtos es una lista vacía ([]), se procesa y devuelve vacía.
-     */
-    public OrdenamientoResponseDTO ordenar(List<MineralDTO> dtos, String algoritmo, String criterio, String direccion) {
-        List<Mineral> minerales;
-        if (dtos == null) {
-            minerales = new ArrayList<>(obtenerMineralesPorDefecto());
-        } else {
-            minerales = dtos.stream().map(MineralDTO::toModel).toList();
+    /** Valida y persiste los minerales recibidos. Si uno es invalido no se guarda ninguno. */
+    @Transactional
+    public List<MineralDTO> crear(List<MineralDTO> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            throw new IllegalArgumentException("Se debe enviar al menos un mineral");
         }
+        List<Mineral> nuevos = aModelos(dtos);
+        return mineralRepository.saveAll(nuevos).stream().map(MineralDTO::fromModel).toList();
+    }
 
+    @Transactional
+    public void eliminar(String id) {
+        if (!mineralRepository.existsById(id)) {
+            throw new MineralNoEncontradoException(id);
+        }
+        mineralRepository.deleteById(id);
+    }
+
+    /**
+     * Ordena los minerales del body; si no se envia body, ordena los persistidos en Neo4j.
+     * Los minerales se leen una sola vez y el algoritmo trabaja sobre la lista en memoria.
+     */
+    @Transactional(readOnly = true)
+    public OrdenamientoResponseDTO ordenar(List<MineralDTO> dtos, String algoritmo, String criterio, String direccion) {
         Comparator<Mineral> comparadorBase = obtenerComparador(criterio);
-        boolean descendente = resolverDireccion(direccion);
-        Comparator<Mineral> comparadorFinal = descendente ? comparadorBase.reversed() : comparadorBase;
+        Comparator<Mineral> comparador = resolverDireccion(direccion) ? comparadorBase.reversed() : comparadorBase;
+
+        List<Mineral> minerales = dtos == null ? mineralRepository.findAll() : aModelos(dtos);
 
         String algoNormalizado = algoritmo != null ? algoritmo.trim().toLowerCase() : "quicksort";
         List<Mineral> ordenados;
@@ -61,26 +62,31 @@ public class MineralService {
 
         switch (algoNormalizado) {
             case "quicksort" -> {
-                ordenados = ordenamiento.quickSort(minerales, comparadorFinal);
+                ordenados = ordenamiento.quickSort(minerales, comparador);
                 nombreAlgoritmo = "QuickSort (Propio)";
             }
             case "mergesort" -> {
-                ordenados = ordenamiento.mergeSort(minerales, comparadorFinal);
+                ordenados = ordenamiento.mergeSort(minerales, comparador);
                 nombreAlgoritmo = "MergeSort (Propio)";
             }
             default -> throw new IllegalArgumentException(
                     "Algoritmo desconocido: '" + algoritmo + "'. Opciones válidas: 'quicksort', 'mergesort'.");
         }
 
-        List<MineralDTO> resultadoDTO = ordenados.stream()
-                .map(MineralDTO::fromModel)
-                .toList();
-
         return new OrdenamientoResponseDTO(
                 nombreAlgoritmo,
-                criterio != null ? criterio.toLowerCase() : "ratio",
-                resultadoDTO
+                criterio != null ? criterio.trim().toLowerCase() : "ratio",
+                ordenados.stream().map(MineralDTO::fromModel).toList()
         );
+    }
+
+    private List<Mineral> aModelos(List<MineralDTO> dtos) {
+        return dtos.stream().map(dto -> {
+            if (dto == null) {
+                throw new IllegalArgumentException("La lista de minerales no puede contener elementos nulos");
+            }
+            return dto.toModel();
+        }).toList();
     }
 
     private boolean resolverDireccion(String direccion) {

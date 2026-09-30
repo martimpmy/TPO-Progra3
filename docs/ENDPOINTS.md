@@ -30,15 +30,17 @@ pares distintos de estaciones, así que una ruta bidireccional cuenta como 1 ari
 
 ### POST /api/minerales/ordenar  (Hito 2)
 
-Ordenamiento propio de lotes de minerales y recursos comerciales aplicando la técnica de **Divide y Vencerás** (sin utilizar `Collections.sort()` ni `Arrays.sort()`).
+Ordenamiento propio de lotes de minerales aplicando **Divide y Vencerás** (sin `Collections.sort()` ni `Arrays.sort()`).
 
 **Parámetros de Consulta (Query Params):**
-- `algoritmo` *(opcional, default: `quicksort`)*: `quicksort` o `mergesort`.
-- `criterio` *(opcional, default: `ratio`)*: `ratio`, `valor` o `peso`.
-- `direccion` *(opcional, default: `desc`)*: `desc` (descendente) o `asc` (ascendente).
+- `algoritmo` *(opcional, default `quicksort`)*: `quicksort` o `mergesort`.
+- `criterio` *(opcional, default `ratio`)*: `ratio`, `valor` o `peso`.
+- `direccion` *(opcional, default `desc`)*: `desc` o `asc`.
 
-**Cuerpo de Entrada (Request Body - Opcional):**
-Si se omite (`null`), se utiliza el catálogo canónico de minerales por defecto. Si se envía un arreglo vacío (`[]`), se procesa y devuelve una lista vacía.
+**Cuerpo de Entrada (opcional):**
+- **Sin body:** ordena los minerales **persistidos en Neo4j** (ver `POST /api/minerales`).
+- **Con body:** ordena la lista enviada, sin guardarla. `[]` devuelve un resultado vacío.
+- `peso` (> 0) y `valor` (≥ 0) admiten decimales.
 ```json
 [
   { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66 },
@@ -47,50 +49,25 @@ Si se omite (`null`), se utiliza el catálogo canónico de minerales por defecto
 ]
 ```
 
-**Ejemplo de Petición:**
-`POST /api/minerales/ordenar?algoritmo=quicksort&criterio=ratio&direccion=desc`
+**Ejemplo:** `POST /api/minerales/ordenar?algoritmo=quicksort&criterio=ratio&direccion=desc`
 
-**Respuesta Exitosa (200 OK):**
+**Respuesta (200 OK):**
 ```json
 {
   "algoritmoUtilizado": "QuickSort (Propio)",
   "criterio": "ratio",
   "resultado": [
-    { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66, "ratio": 11.0 },
-    { "nombre": "Núcleo de Plasma", "peso": 5, "valor": 50, "ratio": 10.0 },
-    { "nombre": "Aleación de Titanio", "peso": 5, "valor": 50, "ratio": 10.0 }
+    { "nombre": "Cristal de Taquiones", "peso": 6.0, "valor": 66.0, "ratio": 11.0 },
+    { "nombre": "Núcleo de Plasma", "peso": 5.0, "valor": 50.0, "ratio": 10.0 },
+    { "nombre": "Aleación de Titanio", "peso": 5.0, "valor": 50.0, "ratio": 10.0 }
   ]
 }
 ```
+Los minerales persistidos incluyen además su `id`. QuickSort no es estable: dos minerales
+con la misma clave (ej. ratio 10.0) pueden salir en cualquier orden; MergeSort conserva el orden original.
 
-**Errores Manejados (400 Bad Request):**
-- Si se envía un algoritmo no soportado (ej. `algoritmo=bogo`):
-```json
-{
-  "fecha": "2026-09-30T10:00:00",
-  "codigo": 400,
-  "error": "Bad Request",
-  "mensaje": "Algoritmo desconocido: 'bogo'. Opciones válidas: 'quicksort', 'mergesort'."
-}
-```
-- Si se envía un criterio inválido (ej. `criterio=color`):
-```json
-{
-  "fecha": "2026-09-30T10:00:00",
-  "codigo": 400,
-  "error": "Bad Request",
-  "mensaje": "Criterio inválido: 'color'. Opciones válidas: 'valor', 'peso', 'ratio'."
-}
-```
-- Si se envía una dirección inválida (ej. `direccion=aleatoria`):
-```json
-{
-  "fecha": "2026-09-30T10:00:00",
-  "codigo": 400,
-  "error": "Bad Request",
-  "mensaje": "Dirección inválida: 'aleatoria'. Opciones válidas: 'desc', 'asc'."
-}
-```
+**Errores (400 Bad Request):** `algoritmo`, `criterio` o `direccion` inválidos; mineral sin
+`nombre`, sin `valor`, con `peso` ≤ 0 o `valor` < 0; JSON mal formado.
 
 **Justificación de Complejidad y Análisis Teórico:**
 1. **QuickSort:**
@@ -105,6 +82,37 @@ Si se omite (`null`), se utiliza el catálogo canónico de minerales por defecto
    - *Complejidad temporal:* $O(N \log N)$ garantizada en el mejor, peor y promedio caso.
    - *Espacio auxiliar:* $O(N)$ para las sublistas de mezcla en memoria.
 
-**Compatibilidad con Scaffold:**
-- `GET /api/seleccion/quicksort?criterio=ratio`
-- `GET /api/seleccion/mergesort?criterio=peso`
+---
+
+### GET /api/minerales
+
+Lista los minerales persistidos en Neo4j (`(:Mineral {id, nombre, peso, valor})`).
+
+**Respuesta (200 OK):**
+```json
+[ { "id": "3f2a…", "nombre": "Cristal de Taquiones", "peso": 6.0, "valor": 66.0, "ratio": 11.0 } ]
+```
+
+**Complejidad:** O(N) — lectura de los N nodos `:Mineral`.
+
+---
+
+### POST /api/minerales
+
+Persiste uno o más minerales en Neo4j. Si alguno es inválido no se guarda ninguno.
+
+**Cuerpo:** `[ { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66 } ]`
+
+**Respuesta (201 Created):** los minerales guardados, con su `id` generado.
+
+**Errores:** `400` si la lista está vacía o algún mineral es inválido.
+
+**Complejidad:** O(N) — una escritura por mineral en una sola transacción.
+
+---
+
+### DELETE /api/minerales/{id}
+
+Elimina un mineral persistido.
+
+**Respuesta:** `204 No Content`. **Errores:** `404` si no existe el `id`.

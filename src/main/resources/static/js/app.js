@@ -4,15 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarInventario();
 });
 
-// Lista reactiva de minerales en la bahía de carga
-let mineralesEnBodega = [
-    { nombre: "Cristal de Taquiones", peso: 6, valor: 66, ratio: 11.0 },
-    { nombre: "Núcleo de Plasma", peso: 5, valor: 50, ratio: 10.0 },
-    { nombre: "Aleación de Titanio", peso: 5, valor: 50, ratio: 10.0 },
-    { nombre: "Fragmento de Antimateria", peso: 2, valor: 30, ratio: 15.0 },
-    { nombre: "Lingote de Iridio", peso: 4, valor: 44, ratio: 11.0 },
-    { nombre: "Celdas de Helio-3", peso: 3, valor: 27, ratio: 9.0 }
-];
+// Minerales mostrados en la tabla (se leen de Neo4j vía /api/minerales)
+let mineralesEnBodega = [];
 
 /**
  * Consulta el estado del Hito 1 (Neo4j AuraDB y resumen del grafo)
@@ -38,7 +31,7 @@ async function inicializarTelemetriaGrafo() {
  * Inicializa y enlaza los eventos de la consola de minerales (Hito 2)
  */
 function inicializarInventario() {
-    renderizarTablaMinerales(mineralesEnBodega);
+    cargarMineralesPersistidos();
 
     const btnOrdenar = document.getElementById("btnEjecutarOrden");
     const btnAgregar = document.getElementById("btnAgregarMineral");
@@ -51,22 +44,66 @@ function inicializarInventario() {
     actualizarTeoria();
 }
 
+async function cargarMineralesPersistidos() {
+    try {
+        const response = await fetch("/api/minerales");
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.mensaje);
+        }
+        mineralesEnBodega = await response.json();
+        renderizarTablaMinerales(mineralesEnBodega);
+    } catch (err) {
+        mineralesEnBodega = [];
+        renderizarTablaMinerales(mineralesEnBodega);
+        alert(`No se pudieron leer los minerales: ${err.message}`);
+    }
+}
+
+function celda(texto) {
+    const td = document.createElement("td");
+    td.textContent = texto;
+    return td;
+}
+
 function renderizarTablaMinerales(minerales, animar = false) {
     const tbody = document.getElementById("mineralesTableBody");
     tbody.innerHTML = "";
+
+    if (minerales.length === 0) {
+        const tr = document.createElement("tr");
+        const td = celda("La bodega está vacía. Agregá minerales con el formulario.");
+        td.colSpan = 5;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+    }
 
     minerales.forEach((m) => {
         const tr = document.createElement("tr");
         if (animar) tr.classList.add("animate-sort");
 
-        const ratio = m.ratio !== undefined ? m.ratio : (m.peso > 0 ? (m.valor / m.peso).toFixed(1) : 0);
+        // textContent (no innerHTML): los nombres vienen de la base y no deben interpretarse como HTML
+        const tdNombre = document.createElement("td");
+        const strong = document.createElement("strong");
+        strong.textContent = m.nombre;
+        tdNombre.appendChild(strong);
 
-        tr.innerHTML = `
-            <td><strong>${m.nombre}</strong></td>
-            <td>${m.peso} t</td>
-            <td>${m.valor} CG</td>
-            <td><span class="ratio-pill">${ratio} CG/t</span></td>
-        `;
+        const tdRatio = document.createElement("td");
+        const pill = document.createElement("span");
+        pill.className = "ratio-pill";
+        pill.textContent = `${m.ratio} CG/t`;
+        tdRatio.appendChild(pill);
+
+        const tdAcciones = document.createElement("td");
+        const btnBorrar = document.createElement("button");
+        btnBorrar.className = "btn-secondary";
+        btnBorrar.type = "button";
+        btnBorrar.title = "Eliminar de la base";
+        btnBorrar.textContent = "✕";
+        btnBorrar.addEventListener("click", () => eliminarMineral(m.id, m.nombre));
+        tdAcciones.appendChild(btnBorrar);
+
+        tr.append(tdNombre, celda(`${m.peso} t`), celda(`${m.valor} CG`), tdRatio, tdAcciones);
         tbody.appendChild(tr);
     });
 
@@ -87,12 +124,8 @@ async function ejecutarOrdenamiento() {
     try {
         const url = `/api/minerales/ordenar?algoritmo=${encodeURIComponent(algoritmo)}&criterio=${encodeURIComponent(criterio)}&direccion=${encodeURIComponent(direccion)}`;
 
-        // Enviamos la lista actual en memoria
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(mineralesEnBodega)
-        });
+        // Sin body: el servidor ordena los minerales persistidos en Neo4j
+        const response = await fetch(url, { method: "POST" });
 
         if (!response.ok) {
             const err = await response.json();
@@ -122,7 +155,7 @@ async function ejecutarOrdenamiento() {
     }
 }
 
-function agregarMineral(e) {
+async function agregarMineral(e) {
     e.preventDefault();
     const inputNombre = document.getElementById("nuevoNombre");
     const inputPeso = document.getElementById("nuevoPeso");
@@ -145,13 +178,39 @@ function agregarMineral(e) {
         return;
     }
 
-    const ratio = Math.round((valor / peso) * 100.0) / 100.0;
-    mineralesEnBodega.push({ nombre, peso, valor, ratio });
-    renderizarTablaMinerales(mineralesEnBodega);
+    try {
+        const response = await fetch("/api/minerales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify([{ nombre, peso, valor }])
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            alert(`Error (${err.codigo}): ${err.mensaje}`);
+            return;
+        }
+        inputNombre.value = "";
+        inputPeso.value = "";
+        inputValor.value = "";
+        await cargarMineralesPersistidos();
+    } catch (err) {
+        alert("Error de conexión al guardar el mineral.");
+    }
+}
 
-    inputNombre.value = "";
-    inputPeso.value = "";
-    inputValor.value = "";
+async function eliminarMineral(id, nombre) {
+    if (!confirm(`¿Eliminar "${nombre}" de la base?`)) return;
+    try {
+        const response = await fetch(`/api/minerales/${encodeURIComponent(id)}`, { method: "DELETE" });
+        if (!response.ok && response.status !== 404) {
+            const err = await response.json();
+            alert(`Error (${err.codigo}): ${err.mensaje}`);
+            return;
+        }
+        await cargarMineralesPersistidos();
+    } catch (err) {
+        alert("Error de conexión al eliminar el mineral.");
+    }
 }
 
 function actualizarTeoria() {
