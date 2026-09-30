@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import uade.prog3.tpo.model.Mineral;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrdenamientoTest {
 
