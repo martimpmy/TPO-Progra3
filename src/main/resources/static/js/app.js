@@ -6,12 +6,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Lista reactiva de minerales en la bahía de carga
 let mineralesEnBodega = [
-    { nombre: "Cristal de Taquiones", peso: 6.0, valor: 66.0, ratio: 11.0 },
-    { nombre: "Núcleo de Plasma", peso: 5.0, valor: 50.0, ratio: 10.0 },
-    { nombre: "Aleación de Titanio", peso: 5.0, valor: 50.0, ratio: 10.0 },
-    { nombre: "Fragmento de Antimateria", peso: 2.0, valor: 30.0, ratio: 15.0 },
-    { nombre: "Lingote de Iridio", peso: 4.0, valor: 44.0, ratio: 11.0 },
-    { nombre: "Celdas de Helio-3", peso: 3.0, valor: 27.0, ratio: 9.0 }
+    { nombre: "Cristal de Taquiones", peso: 6, valor: 66, ratio: 11.0 },
+    { nombre: "Núcleo de Plasma", peso: 5, valor: 50, ratio: 10.0 },
+    { nombre: "Aleación de Titanio", peso: 5, valor: 50, ratio: 10.0 },
+    { nombre: "Fragmento de Antimateria", peso: 2, valor: 30, ratio: 15.0 },
+    { nombre: "Lingote de Iridio", peso: 4, valor: 44, ratio: 11.0 },
+    { nombre: "Celdas de Helio-3", peso: 3, valor: 27, ratio: 9.0 }
 ];
 
 /**
@@ -160,10 +160,11 @@ function actualizarTeoria() {
 
     if (algo === "quicksort") {
         box.innerHTML = `
-            <strong>QuickSort (Divide y Vencerás In-Place):</strong><br>
-            • <em>Estrategia del Pivote:</em> Mediana de Tres (bajo, medio, alto) para balancear la partición.<br>
-            • <em>Recurrencia:</em> T(N) = 2T(N/2) + O(N) ➔ <strong>O(N log N)</strong> promedio por Teorema Maestro.<br>
-            • <em>Peor Caso:</em> O(N²) si el pivote es siempre extremo absoluto. Espacio en pila: O(log N).
+            <strong>QuickSort (Partición de 3 Vías de Dijkstra):</strong><br>
+            • <em>Estrategia del Pivote:</em> Mediana de Tres (bajo, medio, alto) + partición de 3 vías (&lt;, =, &gt;).<br>
+            • <em>Claves Repetidas:</em> Agrupa elementos con igual clave en <strong>O(N)</strong> en una sola pasada.<br>
+            • <em>Optimización de Pila:</em> Eliminación de llamada de cola acotando recursión a <strong>O(log N)</strong>.<br>
+            • <em>Recurrencia:</em> T(N) = 2T(N/2) + O(N) ➔ <strong>O(N log N)</strong> promedio por Teorema Maestro.
         `;
     } else {
         box.innerHTML = `
