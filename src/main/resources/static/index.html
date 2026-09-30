@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Odisea Galáctica — Computadora de a Bordo</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="hud-container">
+    <!-- Header HUD -->
+    <header class="hud-header">
+      <div class="hud-title-row">
+        <div class="ship-brand">
+          <h1>🚀 ODISEA GALÁCTICA</h1>
+          <div class="ship-meta">
+            Nave de Navegación y Carga: <strong>HERMES (Clase C-3)</strong> | Cuadrante: <strong>Vía Láctea Austral</strong>
+          </div>
+        </div>
+        <div id="grafoStatusBadge" class="status-badge loading">
+          <span class="status-dot"></span>
+          <span id="grafoStatusText">Verificando enlace AuraDB...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active">📦 Bahía de Carga (Hito 2: Divide y Vencerás)</button>
+      <button class="tab-btn disabled" title="Se habilitará en los siguientes hitos">🛒 Hangar Comercial (Greedy / Mochila)</button>
+      <button class="tab-btn disabled" title="Se habilitará en los siguientes hitos">🛰️ Radar Estelar (BFS / DFS)</button>
+      <button class="tab-btn disabled" title="Se habilitará en los siguientes hitos">⚡ Salto Hiperespacial (Dijkstra / MST)</button>
+    </nav>
+
+    <!-- Main Content: Hito 2 Module -->
+    <main>
+      <div class="grid-2">
+        <!-- Panel de Control Algorítmico -->
+        <div class="card">
+          <div class="card-title">
+            <span>⚙️ Computadora de Ordenamiento</span>
+            <span class="badge">DIVIDE Y VENCERÁS</span>
+          </div>
+
+          <div class="control-group">
+            <label for="selectAlgoritmo">Algoritmo Propio</label>
+            <select id="selectAlgoritmo">
+              <option value="quicksort" selected>QuickSort (Partición Mediana de Tres)</option>
+              <option value="mergesort">MergeSort (Mezcla Estable)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="selectCriterio">Criterio de Ordenamiento</label>
+            <select id="selectCriterio">
+              <option value="ratio" selected>Ratio Comercial (Valor / Peso en CG/t)</option>
+              <option value="valor">Valor Comercial (Créditos Galácticos)</option>
+              <option value="peso">Masa / Peso (Toneladas)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="selectDireccion">Dirección del Orden</label>
+            <select id="selectDireccion">
+              <option value="desc" selected>Descendente (Mayor a Menor)</option>
+              <option value="asc">Ascendente (Menor a Mayor)</option>
+            </select>
+          </div>
+
+          <button id="btnEjecutarOrden" class="btn-primary">
+            ⚡ EJECUTAR ORDENAMIENTO ALGORÍTMICO
+          </button>
+
+          <!-- Recuadro Teórico Dinámico -->
+          <div id="teoriaAlgoritmoBox" class="theory-box">
+            <!-- Cargado por JS -->
+          </div>
+
+          <!-- Métricas de Última Ejecución -->
+          <div style="margin-top: 18px; font-size: 0.85rem; color: var(--text-muted);">
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Último algoritmo:</span>
+              <strong id="metricaAlgoritmo" style="color: var(--cyan);">-</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Criterio aplicado:</span>
+              <strong id="metricaCriterio" style="color: var(--purple);">-</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Tiempo de ejecución:</span>
+              <strong id="metricaTiempo" style="color: var(--green);">-</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventario de Minerales en Bodega -->
+        <div class="card">
+          <div class="card-title">
+            <span>📦 Inventario de Minerales en Bodega</span>
+            <span id="contadorMinerales" class="badge">6 lotes</span>
+          </div>
+
+          <div style="overflow-x: auto; max-height: 320px;">
+            <table class="minerals-table">
+              <thead>
+                <tr>
+                  <th>Mineral / Recurso</th>
+                  <th>Peso (t)</th>
+                  <th>Valor</th>
+                  <th>Rentabilidad</th>
+                </tr>
+              </thead>
+              <tbody id="mineralesTableBody">
+                <!-- Filas renderizadas por JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Formulario rápido para agregar minerales de prueba -->
+          <form class="add-form-row" onsubmit="return false;">
+            <input type="text" id="nuevoNombre" placeholder="Mineral (ej: Criptonita)" required>
+            <input type="number" id="nuevoPeso" placeholder="Peso (t)" min="0.1" step="0.1" required>
+            <input type="number" id="nuevoValor" placeholder="Valor (CG)" min="1" step="1" required>
+            <button id="btnAgregarMineral" class="btn-secondary" type="button">+ Agregar</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
