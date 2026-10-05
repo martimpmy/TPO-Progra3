@@ -1,5 +1,6 @@
 package uade.prog3.tpo.service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uade.prog3.tpo.algorithm.Grafo;
 import uade.prog3.tpo.algorithm.Recorridos;
+import uade.prog3.tpo.dto.GrafoDTO;
 import uade.prog3.tpo.dto.RecorridoResponseDTO;
 import uade.prog3.tpo.dto.ResumenGrafoDTO;
 import uade.prog3.tpo.exception.EstacionNoEncontradaException;
@@ -66,6 +68,22 @@ public class GrafoService {
             }
         }
         return grafo;
+    }
+
+    /** Estaciones y rutas del grafo (cada ruta una sola vez), para dibujar el mapa. */
+    public GrafoDTO grafo() {
+        Grafo grafo = cargarGrafo();
+        List<GrafoDTO.EstacionDTO> estaciones = new ArrayList<>();
+        List<GrafoDTO.RutaDTO> rutas = new ArrayList<>();
+        for (int u = 0; u < grafo.cantidadVertices(); u++) {
+            estaciones.add(new GrafoDTO.EstacionDTO(grafo.idDe(u), grafo.nombreDe(u)));
+            for (Grafo.Arista arista : grafo.vecinos(u)) {
+                if (u < arista.destino()) {
+                    rutas.add(new GrafoDTO.RutaDTO(grafo.idDe(u), grafo.idDe(arista.destino()), arista.peso()));
+                }
+            }
+        }
+        return new GrafoDTO(estaciones, rutas);
     }
 
     /**

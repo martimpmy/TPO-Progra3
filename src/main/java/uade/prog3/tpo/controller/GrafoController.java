@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uade.prog3.tpo.dto.GrafoDTO;
 import uade.prog3.tpo.dto.RecorridoResponseDTO;
 import uade.prog3.tpo.dto.ResumenGrafoDTO;
 import uade.prog3.tpo.service.GrafoService;
@@ -16,6 +17,12 @@ public class GrafoController {
 
     public GrafoController(GrafoService grafoService) {
         this.grafoService = grafoService;
+    }
+
+    /** Estaciones y rutas del grafo, para dibujar el mapa en la vista. */
+    @GetMapping
+    public GrafoDTO grafo() {
+        return grafoService.grafo();
     }
 
     /** Hito 1: cantidad de estaciones y rutas cargadas en Neo4j. */
