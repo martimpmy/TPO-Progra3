@@ -165,3 +165,43 @@ falta o está vacía; algún mineral inválido (sin nombre, sin valor, peso ≤ 
 **Espacio auxiliar:** O(N) — copia ordenada y lista de seleccionados.
 **Estructura usada:** lista ordenada con el **MergeSort propio** (estable: ante ratios iguales
 respeta el orden de entrada, así el resultado es determinístico).
+
+---
+
+### GET /api/grafo/recorrer  (Hito 4)
+
+Recorre la red de estaciones desde un origen con **BFS** (por niveles) o **DFS** (en profundidad)
+y devuelve el orden en que se visitan las estaciones alcanzables.
+
+**Parámetros:**
+- `origen` *(obligatorio)*: id de la estación de partida (`SOL`, `ALPHA`, `SIRIUS`, `VEGA`,
+  `KEPLER`, `ORION`, `NOVA`, `CITADEL`).
+- `tipo` *(opcional, default `BFS`)*: `BFS` o `DFS`.
+
+**Ejemplo:** `GET /api/grafo/recorrer?origen=SOL&tipo=BFS`
+
+**Respuesta (200 OK):**
+```json
+{
+  "nodoInicial": "Base Solar (SOL)",
+  "recorrido": "BFS",
+  "ordenExploracion": [
+    "Base Solar", "Alpha Centauri", "Puerto Sirio", "Minas de Vega",
+    "Colonia Kepler", "Nebulosa Orion", "Puesto Nova", "Ciudadela Omega"
+  ]
+}
+```
+Con `tipo=DFS` desde `SOL` el orden es: Base Solar, Alpha Centauri, Puerto Sirio, Colonia Kepler,
+Puesto Nova, Ciudadela Omega, Nebulosa Orion, Minas de Vega.
+
+Los vecinos de cada estación se exploran en **orden alfabético de id**, por eso el resultado
+es siempre el mismo. BFS visita las estaciones por cantidad de saltos desde el origen
+(nivel 1: Alpha y Sirio; nivel 2: Vega y Kepler; nivel 3: Orion y Nova; nivel 4: Ciudadela).
+
+**Errores:** `400` si falta `origen` o `tipo` no es `BFS`/`DFS`; `404` si la estación no existe.
+
+**Complejidad:** O(V + E) — cada estación se visita una vez y cada ruta se examina dos veces
+(una por extremo). **Espacio auxiliar:** O(V).
+**Estructura usada:** lista de adyacencia en memoria + arreglo `boolean[] visitado`;
+BFS usa una **cola FIFO** (se marca visitado al encolar) y DFS la **pila de llamadas recursivas**.
+El grafo se lee de Neo4j en **una sola consulta** y el algoritmo trabaja únicamente en memoria.
