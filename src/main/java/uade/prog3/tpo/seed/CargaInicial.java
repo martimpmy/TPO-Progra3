@@ -33,14 +33,21 @@ public class CargaInicial implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws IOException {
-        if (estacionRepository.count() > 0) {
-            log.info("La base ya tiene estaciones, se omite la carga inicial.");
-            return;
+        try {
+            if (estacionRepository.count() > 0) {
+                log.info("La base ya tiene estaciones, se omite la carga inicial.");
+                return;
+            }
+            String cypher = new ClassPathResource("db/seed-dominio.cypher")
+                    .getContentAsString(StandardCharsets.UTF_8);
+            neo4jClient.query(cypher).run();
+            log.info("Grafo semilla cargado: {} estaciones, {} rutas.",
+                    estacionRepository.count(), estacionRepository.contarRutas());
+        } catch (RuntimeException e) {
+            // Sin base la app arranca igual: los endpoints que la necesitan responden 503
+            log.warn("No se pudo acceder a Neo4j al iniciar; se omite la carga inicial. "
+                    + "Verificar NEO4J_URI y que la instancia de AuraDB no esté pausada. Causa: {}",
+                    e.getMessage());
         }
-        String cypher = new ClassPathResource("db/seed-dominio.cypher")
-                .getContentAsString(StandardCharsets.UTF_8);
-        neo4jClient.query(cypher).run();
-        log.info("Grafo semilla cargado: {} estaciones, {} rutas.",
-                estacionRepository.count(), estacionRepository.contarRutas());
     }
 }
