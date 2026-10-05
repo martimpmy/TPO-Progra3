@@ -1,123 +1,273 @@
-// Odisea Galáctica - Consola de Navegación e Inventario
-document.addEventListener("DOMContentLoaded", () => {
-    inicializarTelemetriaGrafo();
-    inicializarInventario();
+// Odisea Galáctica — consola web. Solo consume la API REST: ningún algoritmo corre en el navegador.
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+const SVG_NS = "http://www.w3.org/2000/svg";
+const sinAnimacion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const estado = {
+    grafo: { estaciones: [], rutas: [] },
+    origen: null,
+    minerales: [],
+    animacion: 0 // se incrementa para cancelar un recorrido en curso
+};
+
+/* ============================ Utilidades ============================ */
+
+/** Llama a la API y devuelve el JSON. Si la respuesta es un error, lanza Error con el mensaje del servidor. */
+async function api(ruta, opciones = {}) {
+    let respuesta;
+    try {
+        respuesta = await fetch(ruta, opciones);
+    } catch (e) {
+        throw new Error("No se pudo conectar con el servidor. ¿Está corriendo la aplicación?");
+    }
+    const texto = await respuesta.text();
+    let datos = null;
+    try { datos = texto ? JSON.parse(texto) : null; } catch (e) { /* respuesta sin JSON */ }
+    if (!respuesta.ok) {
+        const error = new Error((datos && datos.mensaje) || `Error ${respuesta.status}`);
+        error.codigo = respuesta.status;
+        throw error;
+    }
+    return datos;
+}
+
+const enviarJson = (ruta, cuerpo) => api(ruta, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cuerpo)
 });
 
-// Minerales mostrados en la tabla (se leen de Neo4j vía /api/minerales)
-let mineralesEnBodega = [];
+const numero = (n) => Number(n).toLocaleString("es-AR", { maximumFractionDigits: 2 });
 
-/**
- * Consulta el estado del Hito 1 (Neo4j AuraDB y resumen del grafo)
- */
-async function inicializarTelemetriaGrafo() {
-    const badge = document.getElementById("grafoStatusBadge");
-    const statusText = document.getElementById("grafoStatusText");
+function avisar(mensaje, tipo = "error") {
+    const aviso = document.createElement("div");
+    aviso.className = `aviso aviso--${tipo}`;
+    aviso.textContent = mensaje;
+    $("avisos").appendChild(aviso);
+    setTimeout(() => aviso.remove(), tipo === "error" ? 6000 : 3000);
+}
 
+function crear(etiqueta, clase, texto) {
+    const el = document.createElement(etiqueta);
+    if (clase) el.className = clase;
+    if (texto !== undefined) el.textContent = texto;
+    return el;
+}
+
+function svg(etiqueta, atributos = {}, texto) {
+    const el = document.createElementNS(SVG_NS, etiqueta);
+    for (const [k, v] of Object.entries(atributos)) el.setAttribute(k, v);
+    if (texto !== undefined) el.textContent = texto;
+    return el;
+}
+
+/** Deshabilita un botón y cambia su texto mientras dura una operación. */
+async function conBotonOcupado(boton, textoOcupado, tarea) {
+    const original = boton.textContent;
+    boton.disabled = true;
+    boton.textContent = textoOcupado;
     try {
-        const response = await fetch("/api/grafo/resumen");
-        if (!response.ok) throw new Error("Fallo de conexión");
-        const data = await response.json();
-
-        badge.className = "status-badge";
-        statusText.textContent = `AuraDB En Línea: ${data.vertices} Estaciones | ${data.aristas} Rutas`;
-    } catch (error) {
-        badge.className = "status-badge loading";
-        statusText.textContent = "AuraDB Desconectado / Sin Credenciales";
+        return await tarea();
+    } finally {
+        boton.disabled = false;
+        boton.textContent = original;
     }
 }
 
-/**
- * Inicializa y enlaza los eventos de la consola de minerales (Hito 2)
- */
-function inicializarInventario() {
-    cargarMineralesPersistidos();
+/* ============================ Pestañas ============================ */
 
-    const btnOrdenar = document.getElementById("btnEjecutarOrden");
-    const formAgregar = document.getElementById("formAgregarMineral");
-
-    btnOrdenar.addEventListener("click", ejecutarOrdenamiento);
-    // submit (botón o Enter); el navegador valida required/min antes de disparar el evento
-    formAgregar.addEventListener("submit", agregarMineral);
-
-    // Actualizar recuadro teórico cuando cambie el algoritmo
-    document.getElementById("selectAlgoritmo").addEventListener("change", actualizarTeoria);
-    actualizarTeoria();
-}
-
-async function cargarMineralesPersistidos() {
-    try {
-        const response = await fetch("/api/minerales");
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.mensaje);
-        }
-        mineralesEnBodega = await response.json();
-        renderizarTablaMinerales(mineralesEnBodega);
-    } catch (err) {
-        mineralesEnBodega = [];
-        renderizarTablaMinerales(mineralesEnBodega);
-        alert(`No se pudieron leer los minerales: ${err.message}`);
-    }
-}
-
-function celda(texto) {
-    const td = document.createElement("td");
-    td.textContent = texto;
-    return td;
-}
-
-function renderizarTablaMinerales(minerales, animar = false) {
-    const tbody = document.getElementById("mineralesTableBody");
-    tbody.innerHTML = "";
-
-    if (minerales.length === 0) {
-        const tr = document.createElement("tr");
-        const td = celda("La bodega está vacía. Agregá minerales con el formulario o ");
-        td.colSpan = 5;
-        const btnEjemplo = document.createElement("button");
-        btnEjemplo.type = "button";
-        btnEjemplo.className = "btn-secondary";
-        btnEjemplo.textContent = "cargá el ejemplo del PDF";
-        btnEjemplo.addEventListener("click", cargarEjemplo);
-        td.appendChild(btnEjemplo);
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-    }
-
-    minerales.forEach((m) => {
-        const tr = document.createElement("tr");
-        if (animar) tr.classList.add("animate-sort");
-
-        // textContent (no innerHTML): los nombres vienen de la base y no deben interpretarse como HTML
-        const tdNombre = document.createElement("td");
-        const strong = document.createElement("strong");
-        strong.textContent = m.nombre;
-        tdNombre.appendChild(strong);
-
-        const tdRatio = document.createElement("td");
-        const pill = document.createElement("span");
-        pill.className = "ratio-pill";
-        pill.textContent = `${m.ratio} CG/t`;
-        tdRatio.appendChild(pill);
-
-        const tdAcciones = document.createElement("td");
-        const btnBorrar = document.createElement("button");
-        btnBorrar.className = "btn-secondary";
-        btnBorrar.type = "button";
-        btnBorrar.title = "Eliminar de la base";
-        btnBorrar.textContent = "✕";
-        btnBorrar.addEventListener("click", () => eliminarMineral(m.id, m.nombre));
-        tdAcciones.appendChild(btnBorrar);
-
-        tr.append(tdNombre, celda(`${m.peso} t`), celda(`${m.valor} CG`), tdRatio, tdAcciones);
-        tbody.appendChild(tr);
+function iniciarPestanias() {
+    const pestanias = [...document.querySelectorAll('.pestania[role="tab"]')];
+    const activar = (pestania) => {
+        pestanias.forEach((p) => {
+            const activa = p === pestania;
+            p.setAttribute("aria-selected", activa);
+            p.tabIndex = activa ? 0 : -1;
+            $(p.getAttribute("aria-controls")).hidden = !activa;
+        });
+    };
+    pestanias.forEach((p, i) => {
+        p.addEventListener("click", () => activar(p));
+        p.addEventListener("keydown", (e) => {
+            if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+            const destino = pestanias[(i + (e.key === "ArrowRight" ? 1 : pestanias.length - 1)) % pestanias.length];
+            activar(destino);
+            destino.focus();
+        });
     });
-
-    document.getElementById("contadorMinerales").textContent = `${minerales.length} lotes`;
 }
 
-// Contraejemplo Greedy vs PD del informe (sección 5.6) + tres lotes extra
+/* ============================ Estado de la base ============================ */
+
+async function consultarEstado() {
+    const boton = $("estadoBase");
+    boton.className = "estado estado--cargando";
+    $("estadoBaseTexto").textContent = "Conectando con AuraDB…";
+    try {
+        const r = await api("/api/grafo/resumen");
+        boton.className = "estado estado--ok";
+        $("estadoBaseTexto").textContent = `AuraDB en línea · ${r.vertices} estaciones · ${r.aristas} rutas`;
+    } catch (e) {
+        boton.className = "estado estado--error";
+        $("estadoBaseTexto").textContent = "AuraDB sin conexión · reintentar";
+    }
+}
+
+/* ============================ Mapa estelar ============================ */
+
+// Posiciones del diagrama del informe; una estación que no esté acá se ubica en círculo.
+const POSICIONES = {
+    SOL: [400, 55], ALPHA: [185, 150], SIRIUS: [615, 150], VEGA: [245, 270],
+    KEPLER: [555, 270], ORION: [315, 385], NOVA: [625, 385], CITADEL: [470, 470]
+};
+
+function posicionDe(id, indice, total) {
+    if (POSICIONES[id]) return POSICIONES[id];
+    const angulo = (2 * Math.PI * indice) / total - Math.PI / 2;
+    return [400 + 300 * Math.cos(angulo), 270 + 210 * Math.sin(angulo)];
+}
+
+async function cargarMapa() {
+    const contenedor = $("mapaContenedor");
+    try {
+        estado.grafo = await api("/api/grafo");
+    } catch (e) {
+        contenedor.replaceChildren(crear("p", "vacio", `No se pudo leer el mapa: ${e.message}`));
+        $("mapaResumen").textContent = "sin datos";
+        $("selectOrigen").disabled = true;
+        $("btnRecorrer").disabled = true;
+        return;
+    }
+
+    const { estaciones, rutas } = estado.grafo;
+    $("mapaResumen").textContent = `${estaciones.length} estaciones · ${rutas.length} rutas`;
+    if (estaciones.length === 0) {
+        contenedor.replaceChildren(crear("p", "vacio", "La base no tiene estaciones cargadas."));
+        return;
+    }
+
+    const pos = {};
+    estaciones.forEach((e, i) => { pos[e.id] = posicionDe(e.id, i, estaciones.length); });
+
+    const lienzo = svg("svg", { viewBox: "0 0 800 530", role: "group", "aria-label": "Mapa de estaciones y rutas" });
+
+    for (const r of rutas) {
+        const [x1, y1] = pos[r.origen];
+        const [x2, y2] = pos[r.destino];
+        lienzo.appendChild(svg("line", { class: "ruta", x1, y1, x2, y2 }));
+    }
+    // Los costos van después de todas las líneas para que ninguna los tape
+    for (const r of rutas) {
+        const mx = (pos[r.origen][0] + pos[r.destino][0]) / 2;
+        const my = (pos[r.origen][1] + pos[r.destino][1]) / 2;
+        lienzo.appendChild(svg("rect", { class: "ruta-costo-fondo", x: mx - 15, y: my - 11, width: 30, height: 22, rx: 6 }));
+        lienzo.appendChild(svg("text", { class: "ruta-costo", x: mx, y: my }, r.costoCA));
+    }
+    for (const e of estaciones) {
+        const [x, y] = pos[e.id];
+        const grupo = svg("g", { class: "estacion", "data-id": e.id, tabindex: 0, role: "button", "aria-label": `Elegir ${e.nombre} como origen` });
+        grupo.appendChild(svg("circle", { cx: x, cy: y, r: 27 }));
+        grupo.appendChild(svg("text", { class: "estacion__id", x, y, "dominant-baseline": "central" }, e.id));
+        grupo.appendChild(svg("text", { x, y: y + 45 }, e.nombre));
+        grupo.addEventListener("click", () => elegirOrigen(e.id));
+        grupo.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); elegirOrigen(e.id); }
+        });
+        lienzo.appendChild(grupo);
+    }
+    contenedor.replaceChildren(lienzo);
+
+    const select = $("selectOrigen");
+    select.replaceChildren(...estaciones.map((e) => {
+        const opcion = crear("option", null, `${e.nombre} (${e.id})`);
+        opcion.value = e.id;
+        return opcion;
+    }));
+    select.disabled = false;
+    $("btnRecorrer").disabled = false;
+    elegirOrigen(estaciones.some((e) => e.id === "SOL") ? "SOL" : estaciones[0].id);
+}
+
+function nodoDe(id) {
+    return document.querySelector(`.estacion[data-id="${CSS.escape(id)}"]`);
+}
+
+function limpiarRecorrido() {
+    estado.animacion++;
+    document.querySelectorAll(".estacion").forEach((g) => {
+        g.classList.remove("estacion--visitada", "estacion--actual");
+        const etiqueta = g.querySelector(".estacion__id, .estacion__paso");
+        etiqueta.setAttribute("class", "estacion__id");
+        etiqueta.textContent = g.dataset.id;
+    });
+    $("listaRecorrido").replaceChildren();
+    $("recorridoVacio").hidden = false;
+}
+
+function elegirOrigen(id) {
+    estado.origen = id;
+    $("selectOrigen").value = id;
+    limpiarRecorrido();
+    document.querySelectorAll(".estacion").forEach((g) => g.classList.toggle("estacion--origen", g.dataset.id === id));
+}
+
+async function recorrer() {
+    const tipo = document.querySelector('input[name="tipoRecorrido"]:checked').value;
+    let resultado;
+    try {
+        resultado = await conBotonOcupado($("btnRecorrer"), "Recorriendo…",
+            () => api(`/api/grafo/recorrer?origen=${encodeURIComponent(estado.origen)}&tipo=${tipo}`));
+    } catch (e) {
+        avisar(e.message);
+        return;
+    }
+
+    limpiarRecorrido();
+    const turno = estado.animacion;
+    $("recorridoVacio").hidden = true;
+    const idPorNombre = new Map(estado.grafo.estaciones.map((e) => [e.nombre, e.id]));
+    const lista = $("listaRecorrido");
+    let anterior = null;
+
+    for (let i = 0; i < resultado.ordenExploracion.length; i++) {
+        if (turno !== estado.animacion) return; // se eligió otro origen o se relanzó
+        const nombre = resultado.ordenExploracion[i];
+
+        const item = crear("li");
+        item.append(crear("span", "recorrido__num", i + 1), crear("span", null, nombre));
+        lista.appendChild(item);
+
+        const nodo = idPorNombre.has(nombre) ? nodoDe(idPorNombre.get(nombre)) : null;
+        if (nodo) {
+            if (anterior) anterior.classList.remove("estacion--actual");
+            nodo.classList.add("estacion--visitada", "estacion--actual");
+            const etiqueta = nodo.querySelector(".estacion__id");
+            etiqueta.setAttribute("class", "estacion__paso");
+            etiqueta.textContent = i + 1;
+            anterior = nodo;
+        }
+        if (!sinAnimacion) await new Promise((r) => setTimeout(r, 450));
+    }
+    if (anterior && turno === estado.animacion) anterior.classList.remove("estacion--actual");
+}
+
+const TEORIA_RECORRIDO = {
+    BFS: "<strong>BFS (anchura).</strong> Visita primero todo lo que está a 1 salto del origen, después a 2, y así. "
+        + "Usa una <strong>cola FIFO</strong> y marca cada estación al encolarla. Tiempo <code>O(V + E)</code>, espacio <code>O(V)</code>.",
+    DFS: "<strong>DFS (profundidad).</strong> Avanza por un camino hasta no poder seguir y recién ahí retrocede. "
+        + "Usa la <strong>pila de llamadas recursivas</strong>. Tiempo <code>O(V + E)</code>, espacio <code>O(V)</code>."
+};
+
+function mostrarTeoriaRecorrido() {
+    const tipo = document.querySelector('input[name="tipoRecorrido"]:checked').value;
+    $("teoriaRecorrido").innerHTML = TEORIA_RECORRIDO[tipo]
+        + " Los vecinos se exploran en orden alfabético de id.";
+}
+
+/* ============================ Bodega ============================ */
+
 const MINERALES_EJEMPLO = [
     { nombre: "Cristal de Taquiones", peso: 6, valor: 66 },
     { nombre: "Núcleo de Plasma", peso: 5, valor: 50 },
@@ -127,156 +277,206 @@ const MINERALES_EJEMPLO = [
     { nombre: "Celdas de Helio-3", peso: 3, valor: 27 }
 ];
 
-async function cargarEjemplo(e) {
-    e.target.disabled = true;
-    e.target.textContent = "Guardando en AuraDB...";
-    await guardarMinerales(MINERALES_EJEMPLO);
+async function cargarMinerales() {
+    try {
+        estado.minerales = await api("/api/minerales");
+        dibujarMinerales(estado.minerales);
+    } catch (e) {
+        estado.minerales = [];
+        $("contadorMinerales").textContent = "sin datos";
+        const celda = crear("td", "vacio", `No se pudieron leer los minerales: ${e.message}`);
+        celda.colSpan = 5;
+        const fila = crear("tr");
+        fila.appendChild(celda);
+        $("tablaMinerales").replaceChildren(fila);
+    }
 }
 
-/** POST /api/minerales y recarga la tabla. Devuelve true si se guardó. */
-async function guardarMinerales(lista) {
+function dibujarMinerales(minerales, animar = false) {
+    const cuerpo = $("tablaMinerales");
+    $("contadorMinerales").textContent = `${minerales.length} ${minerales.length === 1 ? "lote" : "lotes"}`;
+
+    if (minerales.length === 0) {
+        const celda = crear("td", "vacio", "La bodega está vacía. Agregá un mineral con el formulario o ");
+        celda.colSpan = 5;
+        const ejemplo = crear("button", "boton boton--enlace", "cargá los minerales de ejemplo");
+        ejemplo.type = "button";
+        ejemplo.addEventListener("click", () => guardarMinerales(MINERALES_EJEMPLO, ejemplo, "Guardando…"));
+        celda.append(ejemplo, ".");
+        const fila = crear("tr");
+        fila.appendChild(celda);
+        cuerpo.replaceChildren(fila);
+        return;
+    }
+
+    cuerpo.replaceChildren(...minerales.map((m) => {
+        const fila = crear("tr", animar ? "fila-nueva" : null);
+        const borrar = crear("button", "boton boton--icono", "✕");
+        borrar.type = "button";
+        borrar.title = `Eliminar ${m.nombre}`;
+        borrar.setAttribute("aria-label", `Eliminar ${m.nombre}`);
+        borrar.addEventListener("click", () => eliminarMineral(m, borrar));
+        const acciones = crear("td");
+        acciones.appendChild(borrar);
+        // textContent en todas las celdas: los nombres vienen de la base y no se interpretan como HTML
+        fila.append(crear("td", null, m.nombre), crear("td", "num", numero(m.peso)),
+            crear("td", "num", numero(m.valor)), crear("td", "num", numero(m.ratio)), acciones);
+        return fila;
+    }));
+}
+
+async function guardarMinerales(lista, boton, textoOcupado) {
     try {
-        const response = await fetch("/api/minerales", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(lista)
-        });
-        if (!response.ok) {
-            const err = await response.json();
-            alert(`Error (${err.codigo}): ${err.mensaje}`);
-            await cargarMineralesPersistidos();
-            return false;
-        }
-        await cargarMineralesPersistidos();
+        await conBotonOcupado(boton, textoOcupado, () => enviarJson("/api/minerales", lista));
+        await cargarMinerales();
         return true;
-    } catch (err) {
-        alert("Error de conexión al guardar en la base.");
-        await cargarMineralesPersistidos();
+    } catch (e) {
+        avisar(e.message);
         return false;
     }
 }
 
-async function ejecutarOrdenamiento() {
-    const algoritmo = document.getElementById("selectAlgoritmo").value;
-    const criterio = document.getElementById("selectCriterio").value;
-    const direccion = document.getElementById("selectDireccion").value;
-    const btn = document.getElementById("btnEjecutarOrden");
+async function agregarMineral(evento) {
+    evento.preventDefault();
+    const mineral = {
+        nombre: $("nuevoNombre").value.trim(),
+        peso: parseFloat($("nuevoPeso").value),
+        valor: parseFloat($("nuevoValor").value)
+    };
+    if (await guardarMinerales([mineral], $("btnAgregar"), "Guardando…")) {
+        $("formMineral").reset();
+        $("nuevoNombre").focus();
+        avisar(`${mineral.nombre} guardado en la base.`, "ok");
+    }
+}
 
-    if (mineralesEnBodega.length === 0) {
-        alert("La bodega está vacía: agregá minerales antes de ordenar.");
+async function eliminarMineral(mineral, boton) {
+    if (!confirm(`¿Eliminar "${mineral.nombre}" de la base?`)) return;
+    boton.disabled = true;
+    try {
+        await api(`/api/minerales/${encodeURIComponent(mineral.id)}`, { method: "DELETE" });
+    } catch (e) {
+        if (e.codigo !== 404) avisar(e.message); // 404: ya lo había borrado otra persona
+    }
+    await cargarMinerales();
+}
+
+async function ordenarMinerales() {
+    if (estado.minerales.length === 0) {
+        avisar("La bodega está vacía: agregá minerales antes de ordenar.");
         return;
     }
-
-    btn.disabled = true;
-    btn.innerHTML = "⚡ PROCESANDO DIVIDE Y VENCERÁS...";
-
-    const tInicio = performance.now();
-
+    const algoritmo = document.querySelector('input[name="algoritmo"]:checked').value;
+    const direccion = document.querySelector('input[name="direccion"]:checked').value;
+    const criterio = $("selectCriterio").value;
+    const inicio = performance.now();
     try {
-        const url = `/api/minerales/ordenar?algoritmo=${encodeURIComponent(algoritmo)}&criterio=${encodeURIComponent(criterio)}&direccion=${encodeURIComponent(direccion)}`;
-
         // Sin body: el servidor ordena los minerales persistidos en Neo4j
-        const response = await fetch(url, { method: "POST" });
-
-        if (!response.ok) {
-            const err = await response.json();
-            alert(`Error (${err.codigo}): ${err.mensaje}`);
-            return;
-        }
-
-        const data = await response.json();
-        const tFin = performance.now();
-        const ms = (tFin - tInicio).toFixed(1);
-
-        // Actualizamos estado local y renderizamos
-        mineralesEnBodega = data.resultado;
-        renderizarTablaMinerales(mineralesEnBodega, true);
-
-        // Actualizar métricas
-        document.getElementById("metricaAlgoritmo").textContent = data.algoritmoUtilizado;
-        document.getElementById("metricaTiempo").textContent = `${ms} ms`;
-        document.getElementById("metricaCriterio").textContent = `${data.criterio.toUpperCase()} (${direccion.toUpperCase()})`;
-
-    } catch (err) {
-        console.error("Error al ordenar:", err);
-        alert("Error de conexión al ejecutar el ordenamiento.");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = "⚡ EJECUTAR ORDENAMIENTO ALGORÍTMICO";
+        const r = await conBotonOcupado($("btnOrdenar"), "Ordenando…",
+            () => api(`/api/minerales/ordenar?algoritmo=${algoritmo}&criterio=${criterio}&direccion=${direccion}`, { method: "POST" }));
+        estado.minerales = r.resultado;
+        dibujarMinerales(estado.minerales, true);
+        const linea = $("resultadoOrden");
+        linea.replaceChildren(crear("strong", null, r.algoritmoUtilizado),
+            ` · por ${r.criterio}, ${direccion === "desc" ? "de mayor a menor" : "de menor a mayor"} · respuesta en ${Math.round(performance.now() - inicio)} ms`);
+    } catch (e) {
+        avisar(e.message);
     }
 }
 
-async function agregarMineral(e) {
-    e.preventDefault();
-    const inputNombre = document.getElementById("nuevoNombre");
-    const inputPeso = document.getElementById("nuevoPeso");
-    const inputValor = document.getElementById("nuevoValor");
+const TEORIA_ORDEN = {
+    quicksort: "<strong>QuickSort.</strong> Pivote por mediana de tres y partición de 3 vías (menores, iguales, mayores). "
+        + "Promedio <code>O(N log N)</code>; peor caso <code>O(N²)</code>. <strong>No es estable</strong>: dos minerales con la misma clave pueden salir en cualquier orden.",
+    mergesort: "<strong>MergeSort.</strong> Divide a la mitad, ordena cada parte y las mezcla. "
+        + "<code>O(N log N)</code> garantizado y <code>O(N)</code> de espacio extra. <strong>Es estable</strong>: respeta el orden original entre claves iguales."
+};
 
-    const nombre = inputNombre.value.trim();
-    const peso = parseFloat(inputPeso.value);
-    const valor = parseFloat(inputValor.value);
-
-    if (!nombre) {
-        alert("Ingrese un nombre de mineral.");
-        return;
-    }
-    if (isNaN(peso) || peso <= 0) {
-        alert("El peso debe ser mayor a 0.");
-        return;
-    }
-    if (isNaN(valor) || valor < 0) {
-        alert("El valor no puede ser negativo.");
-        return;
-    }
-
-    const btn = document.getElementById("btnAgregarMineral");
-    btn.disabled = true;
-    btn.textContent = "Guardando...";
-    const ok = await guardarMinerales([{ nombre, peso, valor }]);
-    btn.disabled = false;
-    btn.textContent = "+ Agregar";
-
-    if (ok) {
-        inputNombre.value = "";
-        inputPeso.value = "";
-        inputValor.value = "";
-        inputNombre.focus();
-    }
+function mostrarTeoriaOrden() {
+    $("teoriaOrden").innerHTML = TEORIA_ORDEN[document.querySelector('input[name="algoritmo"]:checked').value];
 }
 
-async function eliminarMineral(id, nombre) {
-    if (!confirm(`¿Eliminar "${nombre}" de la base?`)) return;
+/* ============================ Carga rápida (Greedy) ============================ */
+
+const claveMineral = (m) => `${m.nombre}|${m.peso}|${m.valor}`;
+
+async function cargarBodega(evento) {
+    evento.preventDefault();
+    if (estado.minerales.length === 0) {
+        avisar("No hay minerales guardados. Agregalos en la pestaña Bodega.");
+        return;
+    }
+    const capacidad = parseFloat($("capacidadBodega").value);
+    const disponibles = estado.minerales.map(({ nombre, peso, valor }) => ({ nombre, peso, valor }));
+    let r;
     try {
-        const response = await fetch(`/api/minerales/${encodeURIComponent(id)}`, { method: "DELETE" });
-        if (!response.ok && response.status !== 404) {
-            const err = await response.json();
-            alert(`Error (${err.codigo}): ${err.mensaje}`);
-            return;
-        }
-        await cargarMineralesPersistidos();
-    } catch (err) {
-        alert("Error de conexión al eliminar el mineral.");
+        r = await conBotonOcupado($("btnCargar"), "Cargando…",
+            () => enviarJson("/api/bodega/cargar-greedy", { capacidadBodega: capacidad, itemsDisponibles: disponibles }));
+    } catch (e) {
+        avisar(e.message);
+        return;
     }
+
+    $("cargaVacio").hidden = true;
+    $("cargaResultado").hidden = false;
+    $("cargaValor").textContent = numero(r.valorTotalObtenido);
+    $("cargaPeso").textContent = numero(r.pesoOcupado);
+    $("cargaCantidad").textContent = r.mineralesCargados.length;
+
+    const porcentaje = r.capacidadBodega > 0 ? Math.min(100, (r.pesoOcupado / r.capacidadBodega) * 100) : 0;
+    $("cargaBarraRelleno").style.width = `${porcentaje}%`;
+    const textoBarra = `${numero(r.pesoOcupado)} de ${numero(r.capacidadBodega)} t ocupadas (${Math.round(porcentaje)} %)`;
+    $("cargaBarraTexto").textContent = textoBarra;
+    $("cargaBarra").setAttribute("aria-label", `Ocupación de la bodega: ${textoBarra}`);
+
+    const itemDe = (m) => {
+        const li = crear("li");
+        li.append(crear("span", null, m.nombre),
+            crear("span", null, `${numero(m.peso)} t · ${numero(m.valor)} CG · ratio ${numero(m.valor / m.peso)}`));
+        return li;
+    };
+    $("cargaLista").replaceChildren(...r.mineralesCargados.map(itemDe));
+    if (r.mineralesCargados.length === 0) {
+        $("cargaLista").replaceChildren(crear("li", null, "Ningún mineral entra en esa capacidad."));
+    }
+
+    // Lo que quedó afuera = disponibles menos cargados (como multiconjunto, por si hay lotes repetidos)
+    const cargados = new Map();
+    r.mineralesCargados.forEach((m) => cargados.set(claveMineral(m), (cargados.get(claveMineral(m)) || 0) + 1));
+    const afuera = disponibles.filter((m) => {
+        const quedan = cargados.get(claveMineral(m)) || 0;
+        if (quedan > 0) { cargados.set(claveMineral(m), quedan - 1); return false; }
+        return true;
+    });
+    $("cargaAfueraTitulo").hidden = afuera.length === 0;
+    $("cargaAfuera").replaceChildren(...afuera.map(itemDe));
 }
 
-function actualizarTeoria() {
-    const algo = document.getElementById("selectAlgoritmo").value;
-    const box = document.getElementById("teoriaAlgoritmoBox");
+/* ============================ Inicio ============================ */
 
-    if (algo === "quicksort") {
-        box.innerHTML = `
-            <strong>QuickSort (Partición de 3 Vías de Dijkstra):</strong><br>
-            • <em>Estrategia del Pivote:</em> Mediana de Tres (bajo, medio, alto) + partición de 3 vías (&lt;, =, &gt;).<br>
-            • <em>Claves Repetidas:</em> Agrupa elementos con igual clave en <strong>O(N)</strong> en una sola pasada.<br>
-            • <em>Optimización de Pila:</em> Eliminación de llamada de cola acotando recursión a <strong>O(log N)</strong>.<br>
-            • <em>Recurrencia:</em> T(N) = 2T(N/2) + O(N) ➔ <strong>O(N log N)</strong> promedio por Teorema Maestro.
-        `;
-    } else {
-        box.innerHTML = `
-            <strong>MergeSort (Divide y Vencerás Estable):</strong><br>
-            • <em>Estrategia de Mezcla:</em> División conceptual a la mitad y fusión lineal respetando estabilidad (&le;).<br>
-            • <em>Recurrencia:</em> T(N) = 2T(N/2) + O(N) ➔ <strong>O(N log N)</strong> garantizado en peor y mejor caso.<br>
-            • <em>Espacio Auxiliar:</em> O(N) para arreglos de mezcla temporal.
-        `;
-    }
+function cargarTodo() {
+    consultarEstado();
+    cargarMapa();
+    cargarMinerales();
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    iniciarPestanias();
+
+    $("estadoBase").addEventListener("click", cargarTodo);
+    $("selectOrigen").addEventListener("change", (e) => elegirOrigen(e.target.value));
+    $("btnRecorrer").addEventListener("click", recorrer);
+    document.querySelectorAll('input[name="tipoRecorrido"]').forEach((r) => r.addEventListener("change", () => {
+        mostrarTeoriaRecorrido();
+        limpiarRecorrido();
+    }));
+
+    $("formMineral").addEventListener("submit", agregarMineral);
+    $("btnOrdenar").addEventListener("click", ordenarMinerales);
+    document.querySelectorAll('input[name="algoritmo"]').forEach((r) => r.addEventListener("change", mostrarTeoriaOrden));
+
+    $("formCarga").addEventListener("submit", cargarBodega);
+
+    mostrarTeoriaRecorrido();
+    mostrarTeoriaOrden();
+    cargarTodo();
+});

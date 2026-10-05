@@ -95,6 +95,18 @@ class GrafoServiceTest {
     }
 
     @Test
+    @DisplayName("grafo: devuelve las 8 estaciones y cada una de las 12 rutas una sola vez")
+    void grafoParaElMapa() {
+        when(grafoRepo.leerGrafo()).thenReturn(filasDelDominio());
+
+        uade.prog3.tpo.dto.GrafoDTO dto = service.grafo();
+
+        assertThat(dto.estaciones()).hasSize(8);
+        assertThat(dto.rutas()).hasSize(12).doesNotHaveDuplicates();
+        assertThat(dto.rutas()).contains(new uade.prog3.tpo.dto.GrafoDTO.RutaDTO("CITADEL", "NOVA", 7));
+    }
+
+    @Test
     @DisplayName("recorrer BFS: devuelve nombres en el orden del informe y lee la base una sola vez")
     void recorrerBfs() {
         when(grafoRepo.leerGrafo()).thenReturn(filasDelDominio());

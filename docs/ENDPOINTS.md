@@ -5,6 +5,25 @@ Todas las respuestas son JSON. Los errores devuelven un `ErrorResponseDTO`
 
 ---
 
+### GET /api/grafo
+
+Estaciones y rutas del grafo completo. Lo usa la consola web para dibujar el mapa estelar.
+Cada ruta no dirigida aparece una sola vez.
+
+**Respuesta (200 OK):**
+```json
+{
+  "estaciones": [ { "id": "ALPHA", "nombre": "Alpha Centauri" }, { "id": "SOL", "nombre": "Base Solar" } ],
+  "rutas": [ { "origen": "ALPHA", "destino": "SOL", "costoCA": 12 } ]
+}
+```
+
+**Errores:** `503` si no se puede conectar a Neo4j.
+
+**Complejidad:** O(V + E) — una consulta que lee todo el grafo y una pasada por la lista de adyacencia.
+
+---
+
 ### GET /api/grafo/resumen  (Hito 1)
 
 Cantidad de estaciones (vértices) y rutas hiperespaciales (aristas) cargadas en Neo4j AuraDB.

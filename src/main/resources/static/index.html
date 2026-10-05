@@ -3,133 +3,198 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Odisea Galáctica — Computadora de a Bordo</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <title>Odisea Galáctica — Computadora de a bordo</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+  <link rel="stylesheet" href="/css/styles.css?v=2">
 </head>
 <body>
-  <div class="hud-container">
-    <!-- Header HUD -->
-    <header class="hud-header">
-      <div class="hud-title-row">
-        <div class="ship-brand">
-          <h1>🚀 ODISEA GALÁCTICA</h1>
-          <div class="ship-meta">
-            Nave de Navegación y Carga: <strong>HERMES (Clase C-3)</strong> | Cuadrante: <strong>Vía Láctea Austral</strong>
-          </div>
-        </div>
-        <div id="grafoStatusBadge" class="status-badge loading">
-          <span class="status-dot"></span>
-          <span id="grafoStatusText">Verificando enlace AuraDB...</span>
-        </div>
+  <div class="app">
+    <header class="cabecera">
+      <div>
+        <h1>Odisea Galáctica</h1>
+        <p class="subtitulo">Computadora de navegación y carga · Sector Vía Láctea Austral</p>
       </div>
+      <button id="estadoBase" class="estado estado--cargando" type="button" title="Volver a consultar la base">
+        <span class="estado__punto" aria-hidden="true"></span>
+        <span id="estadoBaseTexto">Conectando con AuraDB…</span>
+      </button>
     </header>
 
-    <!-- Navigation Tabs -->
-    <nav class="nav-tabs">
-      <button class="tab-btn active">📦 Bahía de Carga (Hito 2: Divide y Vencerás)</button>
-      <button class="tab-btn disabled" title="Se habilitará en los siguientes hitos">🛒 Hangar Comercial (Greedy / Mochila)</button>
-      <button class="tab-btn disabled" title="Se habilitará en los siguientes hitos">🛰️ Radar Estelar (BFS / DFS)</button>
-      <button class="tab-btn disabled" title="Se habilitará en los siguientes hitos">⚡ Salto Hiperespacial (Dijkstra / MST)</button>
+    <nav class="pestanias" role="tablist" aria-label="Módulos">
+      <button class="pestania" role="tab" id="tab-mapa" aria-controls="panel-mapa" aria-selected="true">Mapa estelar</button>
+      <button class="pestania" role="tab" id="tab-bodega" aria-controls="panel-bodega" aria-selected="false" tabindex="-1">Bodega</button>
+      <button class="pestania" role="tab" id="tab-carga" aria-controls="panel-carga" aria-selected="false" tabindex="-1">Carga rápida</button>
+      <span class="pestania pestania--proxima" title="Hito 5 en adelante">Rutas óptimas · próximamente</span>
     </nav>
 
-    <!-- Main Content: Hito 2 Module -->
-    <main>
-      <div class="grid-2">
-        <!-- Panel de Control Algorítmico -->
-        <div class="card">
-          <div class="card-title">
-            <span>⚙️ Computadora de Ordenamiento</span>
-            <span class="badge">DIVIDE Y VENCERÁS</span>
+    <!-- ============ MAPA ESTELAR (BFS / DFS) ============ -->
+    <section id="panel-mapa" class="panel" role="tabpanel" aria-labelledby="tab-mapa">
+      <div class="grilla grilla--mapa">
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Red de estaciones</h2>
+            <span id="mapaResumen" class="chip">—</span>
           </div>
-
-          <div class="control-group">
-            <label for="selectAlgoritmo">Algoritmo Propio</label>
-            <select id="selectAlgoritmo">
-              <option value="quicksort" selected>QuickSort (Partición Mediana de Tres)</option>
-              <option value="mergesort">MergeSort (Mezcla Estable)</option>
-            </select>
-          </div>
-
-          <div class="control-group">
-            <label for="selectCriterio">Criterio de Ordenamiento</label>
-            <select id="selectCriterio">
-              <option value="ratio" selected>Ratio Comercial (Valor / Peso en CG/t)</option>
-              <option value="valor">Valor Comercial (Créditos Galácticos)</option>
-              <option value="peso">Masa / Peso (Toneladas)</option>
-            </select>
-          </div>
-
-          <div class="control-group">
-            <label for="selectDireccion">Dirección del Orden</label>
-            <select id="selectDireccion">
-              <option value="desc" selected>Descendente (Mayor a Menor)</option>
-              <option value="asc">Ascendente (Menor a Mayor)</option>
-            </select>
-          </div>
-
-          <button id="btnEjecutarOrden" class="btn-primary">
-            ⚡ EJECUTAR ORDENAMIENTO ALGORÍTMICO
-          </button>
-
-          <!-- Recuadro Teórico Dinámico -->
-          <div id="teoriaAlgoritmoBox" class="theory-box">
-            <!-- Cargado por JS -->
-          </div>
-
-          <!-- Métricas de Última Ejecución -->
-          <div style="margin-top: 18px; font-size: 0.85rem; color: var(--text-muted);">
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-              <span>Último algoritmo:</span>
-              <strong id="metricaAlgoritmo" style="color: var(--cyan);">-</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-              <span>Criterio aplicado:</span>
-              <strong id="metricaCriterio" style="color: var(--purple);">-</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-              <span>Tiempo de ejecución:</span>
-              <strong id="metricaTiempo" style="color: var(--green);">-</strong>
-            </div>
+          <p class="ayuda">Hacé clic en una estación para elegirla como origen. Los números de las rutas son el consumo en Celdas de Antimateria (CA).</p>
+          <div id="mapaContenedor" class="mapa">
+            <p class="vacio">Cargando el mapa…</p>
           </div>
         </div>
 
-        <!-- Inventario de Minerales en Bodega -->
-        <div class="card">
-          <div class="card-title">
-            <span>📦 Inventario de Minerales en Bodega</span>
-            <span id="contadorMinerales" class="badge">0 lotes</span>
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Recorrido</h2>
+            <span class="chip chip--violeta">Hito 4</span>
           </div>
 
-          <div style="overflow-x: auto; max-height: 320px;">
-            <table class="minerals-table">
+          <label class="campo">
+            <span>Estación de origen</span>
+            <select id="selectOrigen" disabled></select>
+          </label>
+
+          <div class="campo">
+            <span id="tipoEtiqueta">Algoritmo</span>
+            <div class="segmentado" role="radiogroup" aria-labelledby="tipoEtiqueta">
+              <label><input type="radio" name="tipoRecorrido" value="BFS" checked><span>BFS · por niveles</span></label>
+              <label><input type="radio" name="tipoRecorrido" value="DFS"><span>DFS · en profundidad</span></label>
+            </div>
+          </div>
+
+          <button id="btnRecorrer" class="boton boton--primario" type="button" disabled>Recorrer la red</button>
+
+          <ol id="listaRecorrido" class="recorrido" aria-live="polite"></ol>
+          <p id="recorridoVacio" class="vacio">Elegí un origen y un algoritmo para ver el orden de visita.</p>
+
+          <div id="teoriaRecorrido" class="nota"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BODEGA (minerales + ordenamiento) ============ -->
+    <section id="panel-bodega" class="panel" role="tabpanel" aria-labelledby="tab-bodega" hidden>
+      <div class="grilla grilla--bodega">
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Minerales en la base</h2>
+            <span id="contadorMinerales" class="chip">—</span>
+          </div>
+
+          <div class="tabla-envoltorio">
+            <table class="tabla">
               <thead>
                 <tr>
-                  <th>Mineral / Recurso</th>
-                  <th>Peso (t)</th>
-                  <th>Valor</th>
-                  <th>Rentabilidad</th>
-                  <th></th>
+                  <th>Mineral</th>
+                  <th class="num">Peso (t)</th>
+                  <th class="num">Valor (CG)</th>
+                  <th class="num">Ratio (CG/t)</th>
+                  <th><span class="solo-lectores">Acciones</span></th>
                 </tr>
               </thead>
-              <tbody id="mineralesTableBody">
-                <!-- Filas renderizadas por JS -->
-                <tr><td colspan="5">Cargando minerales desde AuraDB...</td></tr>
+              <tbody id="tablaMinerales">
+                <tr><td colspan="5" class="vacio">Cargando minerales…</td></tr>
               </tbody>
             </table>
           </div>
 
-          <!-- Formulario rápido para agregar minerales de prueba -->
-          <form id="formAgregarMineral" class="add-form-row">
-            <input type="text" id="nuevoNombre" placeholder="Mineral (ej: Criptonita)" required>
-            <input type="number" id="nuevoPeso" placeholder="Peso (t)" min="0.01" step="any" required>
-            <input type="number" id="nuevoValor" placeholder="Valor (CG)" min="0" step="any" required>
-            <button id="btnAgregarMineral" class="btn-secondary" type="submit">+ Agregar</button>
+          <form id="formMineral" class="fila-formulario">
+            <label class="campo"><span>Nombre</span><input id="nuevoNombre" type="text" placeholder="Cristal de Taquiones" required maxlength="60"></label>
+            <label class="campo"><span>Peso (t)</span><input id="nuevoPeso" type="number" min="0.01" step="any" placeholder="6" required></label>
+            <label class="campo"><span>Valor (CG)</span><input id="nuevoValor" type="number" min="0" step="any" placeholder="66" required></label>
+            <button id="btnAgregar" class="boton" type="submit">Agregar</button>
           </form>
         </div>
+
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Ordenar</h2>
+            <span class="chip chip--violeta">Hito 2</span>
+          </div>
+
+          <div class="campo">
+            <span id="algoEtiqueta">Algoritmo propio</span>
+            <div class="segmentado" role="radiogroup" aria-labelledby="algoEtiqueta">
+              <label><input type="radio" name="algoritmo" value="quicksort" checked><span>QuickSort</span></label>
+              <label><input type="radio" name="algoritmo" value="mergesort"><span>MergeSort</span></label>
+            </div>
+          </div>
+
+          <label class="campo">
+            <span>Criterio</span>
+            <select id="selectCriterio">
+              <option value="ratio">Ratio valor / peso</option>
+              <option value="valor">Valor</option>
+              <option value="peso">Peso</option>
+            </select>
+          </label>
+
+          <div class="campo">
+            <span id="dirEtiqueta">Dirección</span>
+            <div class="segmentado" role="radiogroup" aria-labelledby="dirEtiqueta">
+              <label><input type="radio" name="direccion" value="desc" checked><span>Mayor a menor</span></label>
+              <label><input type="radio" name="direccion" value="asc"><span>Menor a mayor</span></label>
+            </div>
+          </div>
+
+          <button id="btnOrdenar" class="boton boton--primario" type="button">Ordenar minerales</button>
+          <p id="resultadoOrden" class="resultado-linea" aria-live="polite"></p>
+
+          <div id="teoriaOrden" class="nota"></div>
+        </div>
       </div>
-    </main>
+    </section>
+
+    <!-- ============ CARGA RÁPIDA (Greedy) ============ -->
+    <section id="panel-carga" class="panel" role="tabpanel" aria-labelledby="tab-carga" hidden>
+      <div class="grilla grilla--bodega">
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Resultado de la carga</h2>
+            <span class="chip chip--violeta">Hito 3 · Greedy</span>
+          </div>
+
+          <div id="cargaResultado" hidden>
+            <div class="metricas">
+              <div class="metrica"><span class="metrica__valor" id="cargaValor">—</span><span class="metrica__nombre">Créditos Galácticos</span></div>
+              <div class="metrica"><span class="metrica__valor" id="cargaPeso">—</span><span class="metrica__nombre">toneladas ocupadas</span></div>
+              <div class="metrica"><span class="metrica__valor" id="cargaCantidad">—</span><span class="metrica__nombre">lotes cargados</span></div>
+            </div>
+
+            <div class="barra" role="img" id="cargaBarra" aria-label="Ocupación de la bodega">
+              <div class="barra__relleno" id="cargaBarraRelleno"></div>
+            </div>
+            <p class="ayuda" id="cargaBarraTexto"></p>
+
+            <h3>Cargados, en el orden en que los eligió el algoritmo</h3>
+            <ol id="cargaLista" class="lista-carga"></ol>
+
+            <h3 id="cargaAfueraTitulo">Quedaron afuera</h3>
+            <ul id="cargaAfuera" class="lista-carga lista-carga--afuera"></ul>
+          </div>
+          <p id="cargaVacio" class="vacio">Indicá la capacidad de la bodega y ejecutá la carga. Se usan los minerales guardados en la pestaña Bodega.</p>
+        </div>
+
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Bodega de la nave</h2>
+          </div>
+          <form id="formCarga">
+            <label class="campo">
+              <span>Capacidad máxima (toneladas)</span>
+              <input id="capacidadBodega" type="number" min="0" step="any" value="10" required>
+            </label>
+            <button id="btnCargar" class="boton boton--primario" type="submit">Cargar por mayor ratio</button>
+          </form>
+          <div class="nota">
+            <strong>Estrategia voraz.</strong> Ordena los minerales por ratio valor/peso y carga cada uno si todavía entra.
+            Es rápida, O(N log N), pero <strong>no garantiza la carga óptima</strong>: con capacidad 10 y lotes de
+            (6 t, 66 CG), (5 t, 50 CG) y (5 t, 50 CG) elige el primero y obtiene 66 CG, cuando los otros dos juntos valen 100 CG.
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <script src="/js/app.js"></script>
+  <div id="avisos" class="avisos" aria-live="assertive"></div>
+  <script src="/js/app.js?v=2"></script>
 </body>
 </html>
