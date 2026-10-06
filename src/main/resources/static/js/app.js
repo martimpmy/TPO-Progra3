@@ -188,6 +188,23 @@ async function cargarMapa() {
     select.disabled = false;
     $("btnRecorrer").disabled = false;
     elegirOrigen(estaciones.some((e) => e.id === "SOL") ? "SOL" : estaciones[0].id);
+
+    const selectDijkstraOrigen = $("dijkstraOrigen");
+    const selectDijkstraDestino = $("dijkstraDestino");
+    if (selectDijkstraOrigen && selectDijkstraDestino) {
+        selectDijkstraOrigen.replaceChildren(...estaciones.map((e) => {
+            const opcion = crear("option", null, `${e.nombre} (${e.id})`);
+            opcion.value = e.id;
+            return opcion;
+        }));
+        selectDijkstraDestino.replaceChildren(...estaciones.map((e) => {
+            const opcion = crear("option", null, `${e.nombre} (${e.id})`);
+            opcion.value = e.id;
+            return opcion;
+        }));
+        if (estaciones.some((e) => e.id === "SOL")) selectDijkstraOrigen.value = "SOL";
+        if (estaciones.some((e) => e.id === "CITADEL")) selectDijkstraDestino.value = "CITADEL";
+    }
 }
 
 function nodoDe(id) {
@@ -451,6 +468,66 @@ async function cargarBodega(evento) {
     $("cargaAfuera").replaceChildren(...afuera.map(itemDe));
 }
 
+/* ============================ Hito 5: Salto Hiperespacial y MST ============================ */
+
+async function ejecutarDijkstra() {
+    const origen = $("dijkstraOrigen").value;
+    const destino = $("dijkstraDestino").value;
+    if (!origen || !destino) {
+        avisar("Seleccioná las estaciones de origen y destino.");
+        return;
+    }
+    let r;
+    try {
+        r = await conBotonOcupado($("btnDijkstra"), "Calculando trayectoria…",
+            () => api(`/api/navegacion/dijkstra?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`));
+    } catch (e) {
+        avisar(e.message);
+        return;
+    }
+
+    $("dijkstraResultado").hidden = false;
+    $("dijkstraConsumo").textContent = numero(r.consumoTotal);
+    $("dijkstraSaltos").textContent = (r.caminoReconstruido && r.caminoReconstruido.length > 0)
+        ? r.caminoReconstruido.length - 1
+        : 0;
+
+    const lista = $("dijkstraCamino");
+    lista.replaceChildren(...r.caminoReconstruido.map((nombre, i) => {
+        const id = r.caminoIds && r.caminoIds[i] ? ` (${r.caminoIds[i]})` : "";
+        const li = crear("li");
+        li.append(crear("span", "recorrido__num", i + 1), crear("span", null, `${nombre}${id}`));
+        return li;
+    }));
+}
+
+async function ejecutarMst() {
+    const radio = document.querySelector('input[name="tipoMst"]:checked');
+    const metodo = radio ? radio.value : "kruskal";
+    let r;
+    try {
+        r = await conBotonOcupado($("btnMst"), "Generando red troncal…",
+            () => api(`/api/red/mst?metodo=${encodeURIComponent(metodo)}`));
+    } catch (e) {
+        avisar(e.message);
+        return;
+    }
+
+    $("mstResultado").hidden = false;
+    $("mstCosto").textContent = numero(r.costoTotalMST);
+    $("mstCantidadAristas").textContent = r.aristasSeleccionadas ? r.aristasSeleccionadas.length : 0;
+
+    const lista = $("mstListaAristas");
+    lista.replaceChildren(...(r.aristasSeleccionadas || []).map((arista) => {
+        const li = crear("li");
+        li.append(
+            crear("span", null, `${arista.origen} ⇄ ${arista.destino}`),
+            crear("span", null, `${numero(arista.costo)} CA`)
+        );
+        return li;
+    }));
+}
+
 /* ============================ Inicio ============================ */
 
 function cargarTodo() {
@@ -475,6 +552,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll('input[name="algoritmo"]').forEach((r) => r.addEventListener("change", mostrarTeoriaOrden));
 
     $("formCarga").addEventListener("submit", cargarBodega);
+
+    $("btnDijkstra").addEventListener("click", ejecutarDijkstra);
+    $("btnMst").addEventListener("click", ejecutarMst);
 
     mostrarTeoriaRecorrido();
     mostrarTeoriaOrden();

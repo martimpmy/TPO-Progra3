@@ -118,4 +118,74 @@ public class GrafoService {
 
         return new RecorridoResponseDTO(nodoInicial, tipoNormalizado, ordenNombres);
     }
+
+    private final uade.prog3.tpo.algorithm.CaminosMinimos caminosMinimos = new uade.prog3.tpo.algorithm.CaminosMinimos();
+    private final uade.prog3.tpo.algorithm.ArbolRecubrimiento arbolRecubrimiento = new uade.prog3.tpo.algorithm.ArbolRecubrimiento();
+
+    /**
+     * Hito 5: Dijkstra con reconstrucción de camino desde origen hasta destino.
+     */
+    public uade.prog3.tpo.dto.DijkstraResponseDTO dijkstra(String origen, String destino) {
+        if (origen == null || origen.isBlank()) {
+            throw new IllegalArgumentException("Falta el parámetro 'origen'");
+        }
+        if (destino == null || destino.isBlank()) {
+            throw new IllegalArgumentException("Falta el parámetro 'destino'");
+        }
+
+        String origenId = origen.trim();
+        String destinoId = destino.trim();
+
+        Grafo grafo = cargarGrafo();
+        if (!grafo.contiene(origenId)) {
+            throw new EstacionNoEncontradaException(origenId);
+        }
+        if (!grafo.contiene(destinoId)) {
+            throw new EstacionNoEncontradaException(destinoId);
+        }
+
+        uade.prog3.tpo.algorithm.CaminosMinimos.ResultadoDijkstra res =
+                caminosMinimos.dijkstra(grafo, origenId, destinoId);
+
+        return new uade.prog3.tpo.dto.DijkstraResponseDTO(
+                res.origenNombre(),
+                res.destinoNombre(),
+                res.consumoTotal(),
+                "Celdas de Antimateria (CA)",
+                res.caminoNombres(),
+                res.caminoIds()
+        );
+    }
+
+    /**
+     * Hito 5: Árbol Generador Mínimo (MST) por Prim o Kruskal.
+     */
+    public uade.prog3.tpo.dto.MstResponseDTO mst(String metodo) {
+        String metodoNormalizado = metodo != null ? metodo.trim().toLowerCase() : "kruskal";
+        if (!metodoNormalizado.equals("prim") && !metodoNormalizado.equals("kruskal")) {
+            throw new IllegalArgumentException(
+                    "Método de MST desconocido: '" + metodo + "'. Opciones válidas: 'prim', 'kruskal'.");
+        }
+
+        Grafo grafo = cargarGrafo();
+        uade.prog3.tpo.algorithm.ArbolRecubrimiento.ResultadoMst res =
+                metodoNormalizado.equals("prim")
+                        ? arbolRecubrimiento.prim(grafo, null)
+                        : arbolRecubrimiento.kruskal(grafo);
+
+        List<uade.prog3.tpo.dto.MstResponseDTO.AristaMstDTO> aristasDTO = res.aristas().stream()
+                .map(a -> new uade.prog3.tpo.dto.MstResponseDTO.AristaMstDTO(
+                        a.origenNombre(),
+                        a.destinoNombre(),
+                        a.costo()
+                ))
+                .toList();
+
+        return new uade.prog3.tpo.dto.MstResponseDTO(
+                res.algoritmo(),
+                res.costoTotal(),
+                "Celdas de Antimateria (CA)",
+                aristasDTO
+        );
+    }
 }

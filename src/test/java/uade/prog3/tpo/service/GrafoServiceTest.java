@@ -142,4 +142,30 @@ class GrafoServiceTest {
         assertThatThrownBy(() -> service.recorrer(" ", "BFS")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.recorrer("PLUTON", "BFS")).isInstanceOf(EstacionNoEncontradaException.class);
     }
+
+    @Test
+    @DisplayName("dijkstra: calcula 56 CA hasta CITADEL y reconstruye la trayectoria")
+    void dijkstraService() {
+        when(grafoRepo.leerGrafo()).thenReturn(filasDelDominio());
+
+        uade.prog3.tpo.dto.DijkstraResponseDTO r = service.dijkstra("SOL", "CITADEL");
+
+        assertThat(r.consumoTotal()).isEqualTo(56);
+        assertThat(r.caminoIds()).containsExactly("SOL", "ALPHA", "SIRIUS", "KEPLER", "NOVA", "CITADEL");
+        verify(grafoRepo, times(1)).leerGrafo();
+    }
+
+    @Test
+    @DisplayName("mst: Prim y Kruskal retornan costo 72 CA y 7 aristas")
+    void mstService() {
+        when(grafoRepo.leerGrafo()).thenReturn(filasDelDominio());
+
+        uade.prog3.tpo.dto.MstResponseDTO kruskal = service.mst("kruskal");
+        assertThat(kruskal.costoTotalMST()).isEqualTo(72);
+        assertThat(kruskal.aristasSeleccionadas()).hasSize(7);
+
+        uade.prog3.tpo.dto.MstResponseDTO prim = service.mst("prim");
+        assertThat(prim.costoTotalMST()).isEqualTo(72);
+        assertThat(prim.aristasSeleccionadas()).hasSize(7);
+    }
 }
