@@ -39,4 +39,35 @@ public class GrafoController {
     ) {
         return grafoService.recorrer(origen, tipo);
     }
+
+    /** Compatibilidad scaffold: GET /api/grafo/dijkstra?origen=SOL&destino=CITADEL */
+    @GetMapping("/dijkstra")
+    public uade.prog3.tpo.dto.DijkstraResponseDTO dijkstra(
+            @RequestParam String origen,
+            @RequestParam String destino
+    ) {
+        return grafoService.dijkstra(origen, destino);
+    }
+
+    /** Compatibilidad scaffold: GET /api/grafo/mst?metodo=prim|kruskal */
+    @GetMapping("/mst")
+    public uade.prog3.tpo.dto.MstResponseDTO mst(
+            @RequestParam(defaultValue = "kruskal") String metodo
+    ) {
+        return grafoService.mst(metodo);
+    }
+
+    /** Compatibilidad scaffold: GET /api/grafo/prim?origen=SOL */
+    @GetMapping("/prim")
+    public uade.prog3.tpo.dto.MstResponseDTO prim(
+            @RequestParam(required = false) String origen
+    ) {
+        return grafoService.mst("prim");
+    }
+
+    /** Compatibilidad scaffold: GET /api/grafo/kruskal */
+    @GetMapping("/kruskal")
+    public uade.prog3.tpo.dto.MstResponseDTO kruskal() {
+        return grafoService.mst("kruskal");
+    }
 }

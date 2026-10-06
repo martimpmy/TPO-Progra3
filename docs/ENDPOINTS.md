@@ -224,3 +224,104 @@ es siempre el mismo. BFS visita las estaciones por cantidad de saltos desde el o
 **Estructura usada:** lista de adyacencia en memoria + arreglo `boolean[] visitado`;
 BFS usa una **cola FIFO** (se marca visitado al encolar) y DFS la **pila de llamadas recursivas**.
 El grafo se lee de Neo4j en **una sola consulta** y el algoritmo trabaja únicamente en memoria.
+
+---
+
+### GET /api/navegacion/dijkstra  (Hito 5)
+
+Calcula la **trayectoria óptima de consumo energético** (Celdas de Antimateria - CA) desde una estación de origen a una de destino mediante el algoritmo de **Dijkstra con Min-Heap**, reconstruyendo el camino completo paso a paso.
+
+**Parámetros de Consulta:**
+- `origen` *(obligatorio)*: identificador de la estación de partida (ej. `SOL`).
+- `destino` *(obligatorio)*: identificador de la estación de destino (ej. `CITADEL`).
+
+**Ejemplo:** `GET /api/navegacion/dijkstra?origen=SOL&destino=CITADEL`
+
+**Respuesta Exitosa (200 OK):**
+```json
+{
+  "origen": "Base Solar",
+  "destino": "Ciudadela Omega",
+  "consumoTotal": 56,
+  "unidad": "Celdas de Antimateria (CA)",
+  "caminoReconstruido": [
+    "Base Solar",
+    "Alpha Centauri",
+    "Puerto Sirio",
+    "Colonia Kepler",
+    "Puesto Nova",
+    "Ciudadela Omega"
+  ],
+  "caminoIds": [
+    "SOL",
+    "ALPHA",
+    "SIRIUS",
+    "KEPLER",
+    "NOVA",
+    "CITADEL"
+  ]
+}
+```
+
+**Verificación contra Cálculo Manual del Informe (Sección 5.5):**
+Trayectoria: `SOL` (0) → `ALPHA` (+12=12) → `SIRIUS` (+8=20) → `KEPLER` (+15=35) → `NOVA` (+14=49) → `CITADEL` (+7=56 CA).
+
+**Errores Manejados:**
+- `400 Bad Request`: Si falta el parámetro `origen` o `destino`.
+- `404 Not Found`: Si alguna de las estaciones especificadas no existe en el grafo.
+- `500 Internal Server Error`: Si el grafo fuese disconexo y no existiera ruta transitable.
+
+**Justificación de Complejidad y Análisis Teórico:**
+- **Complejidad Temporal:** $O((V + E) \log V)$ sostenida mediante `PriorityQueue` (Min-Heap binario). Si se empleara búsqueda lineal en arreglo caería a $O(V^2)$, degradando la calificación según la rúbrica.
+- **Complejidad Espacial:** $O(V)$ para los vectores auxiliares `dist[]`, `predecesor[]` y `visitado[]`.
+- **Estructuras Usadas:** Min-Heap binario + arreglo de predecesores para reconstrucción inversa en $O(L)$ donde $L \le V$.
+- **Lectura Anti-Penalización:** El grafo se carga una sola vez a memoria RAM; el algoritmo opera en memoria pura sin consultas Cypher en sus bucles.
+
+---
+
+### GET /api/red/mst  (Hito 5)
+
+Diseña la **Red Troncal de Balizas Subespaciales** interconectando todas las estaciones al menor costo global posible mediante un Árbol Generador Mínimo (MST), utilizando **Kruskal** (con estructura propia Union-Find DSU) o **Prim** (árbol continuo con PriorityQueue).
+
+**Parámetros de Consulta:**
+- `metodo` *(opcional, default: `kruskal`)*: `kruskal` o `prim`.
+
+**Ejemplo:** `GET /api/red/mst?metodo=kruskal`
+
+**Respuesta Exitosa (200 OK):**
+```json
+{
+  "algoritmo": "Kruskal (con Union-Find propio)",
+  "costoTotalMST": 72,
+  "unidad": "Celdas de Antimateria (CA)",
+  "aristasSeleccionadas": [
+    { "origen": "Puesto Nova", "destino": "Ciudadela Omega", "costo": 7 },
+    { "origen": "Alpha Centauri", "destino": "Puerto Sirio", "costo": 8 },
+    { "origen": "Colonia Kepler", "destino": "Nebulosa Orion", "costo": 9 },
+    { "origen": "Minas de Vega", "destino": "Colonia Kepler", "costo": 10 },
+    { "origen": "Puesto Nova", "destino": "Nebulosa Orion", "costo": 11 },
+    { "origen": "Base Solar", "destino": "Alpha Centauri", "costo": 12 },
+    { "origen": "Puerto Sirio", "destino": "Colonia Kepler", "costo": 15 }
+  ]
+}
+```
+
+**Verificación:** El MST conecta los 8 vértices mediante exactamente $V - 1 = 7$ aristas al menor costo acumulado global de **72 CA** ($7 + 8 + 9 + 10 + 11 + 12 + 15$). Ambos algoritmos (Prim y Kruskal) obtienen exactamente el mismo costo óptimo.
+
+**Errores:** `400 Bad Request` si el método especificado no es `prim` ni `kruskal`.
+
+**Justificación de Complejidad y Estructuras:**
+1. **Kruskal con Union-Find propio:**
+   - *Complejidad Temporal:* $O(E \log E) = O(E \log V)$, dominada por el ordenamiento de aristas (resuelto reutilizando el **MergeSort propio** del Hito 2).
+   - *Union-Find Propio (DSU):* Implementado con **Compresión de Caminos (Path Compression)** en `find()` y **Unión por Rango (Union by Rank)** en `union()`, operando en tiempo casi lineal $O(E \cdot \alpha(V))$.
+   - *Espacio:* $O(V)$ para los arreglos `parent[]` y `rank[]` de DSU + $O(E)$ para la lista de aristas.
+2. **Prim con Cola de Prioridad:**
+   - *Complejidad Temporal:* $O(E \log V)$ mediante `PriorityQueue` de aristas frontera.
+   - *Espacio:* $O(V + E)$ en memoria auxiliar.
+
+**Compatibilidad con Scaffold:**
+- `GET /api/grafo/dijkstra?origen=SOL&destino=CITADEL`
+- `GET /api/grafo/mst?metodo=kruskal`
+- `GET /api/grafo/prim?origen=SOL`
+- `GET /api/grafo/kruskal`
+

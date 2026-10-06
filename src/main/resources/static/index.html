@@ -24,7 +24,8 @@
       <button class="pestania" role="tab" id="tab-mapa" aria-controls="panel-mapa" aria-selected="true">Mapa estelar</button>
       <button class="pestania" role="tab" id="tab-bodega" aria-controls="panel-bodega" aria-selected="false" tabindex="-1">Bodega</button>
       <button class="pestania" role="tab" id="tab-carga" aria-controls="panel-carga" aria-selected="false" tabindex="-1">Carga rápida</button>
-      <span class="pestania pestania--proxima" title="Hito 5 en adelante">Rutas óptimas · próximamente</span>
+      <button class="pestania" role="tab" id="tab-rutas" aria-controls="panel-rutas" aria-selected="false" tabindex="-1">Salto Hiperespacial y MST</button>
+      <span class="pestania pestania--proxima" title="Hito 6 en adelante">Hito 6 en adelante · próximamente</span>
     </nav>
 
     <!-- ============ MAPA ESTELAR (BFS / DFS) ============ -->
@@ -188,6 +189,91 @@
             <strong>Estrategia voraz.</strong> Ordena los minerales por ratio valor/peso y carga cada uno si todavía entra.
             Es rápida, O(N log N), pero <strong>no garantiza la carga óptima</strong>: con capacidad 10 y lotes de
             (6 t, 66 CG), (5 t, 50 CG) y (5 t, 50 CG) elige el primero y obtiene 66 CG, cuando los otros dos juntos valen 100 CG.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SALTO HIPERESPACIAL Y MST (HITO 5) ============ -->
+    <section id="panel-rutas" class="panel" role="tabpanel" aria-labelledby="tab-rutas" hidden>
+      <div class="grilla grilla--mapa">
+        <!-- Tarjeta Dijkstra -->
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Ruta Óptima de Antimateria</h2>
+            <span class="chip chip--violeta">Hito 5 · Dijkstra</span>
+          </div>
+
+          <label class="campo">
+            <span>Estación de Partida</span>
+            <select id="dijkstraOrigen"></select>
+          </label>
+
+          <label class="campo">
+            <span>Estación de Destino</span>
+            <select id="dijkstraDestino"></select>
+          </label>
+
+          <button id="btnDijkstra" class="boton boton--primario" type="button">Trazar Trayectoria Óptima</button>
+
+          <div id="dijkstraResultado" style="margin-top: 16px;" hidden>
+            <div class="metricas">
+              <div class="metrica">
+                <span class="metrica__valor" id="dijkstraConsumo">—</span>
+                <span class="metrica__nombre">Celdas de Antimateria (CA)</span>
+              </div>
+              <div class="metrica">
+                <span class="metrica__valor" id="dijkstraSaltos">—</span>
+                <span class="metrica__nombre">Saltos Hiperespaciales</span>
+              </div>
+            </div>
+            <h3 style="margin-top: 14px;">Trayectoria calculada:</h3>
+            <ol id="dijkstraCamino" class="lista-carga"></ol>
+          </div>
+
+          <div class="nota" style="margin-top: 16px;">
+            <strong>Min-Heap Binario.</strong> Implementado con <code>PriorityQueue</code> para garantizar
+            complejidad <strong>O((V + E) log V)</strong> y relajación de aristas con vector de predecesores.
+            Verificado: SOL &rarr; CITADEL = <strong>56 CA</strong>.
+          </div>
+        </div>
+
+        <!-- Tarjeta MST (Prim y Kruskal) -->
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Red Troncal de Balizas (MST)</h2>
+            <span class="chip chip--violeta">Hito 5 · MST</span>
+          </div>
+
+          <div class="campo">
+            <span id="mstAlgoritmoEtiqueta">Algoritmo de Árbol Mínimo</span>
+            <div class="segmentado" role="radiogroup" aria-labelledby="mstAlgoritmoEtiqueta">
+              <label><input type="radio" name="tipoMst" value="kruskal" checked><span>Kruskal · Union-Find DSU</span></label>
+              <label><input type="radio" name="tipoMst" value="prim"><span>Prim · Árbol Continuo</span></label>
+            </div>
+          </div>
+
+          <button id="btnMst" class="boton boton--primario" type="button">Generar Red Troncal</button>
+
+          <div id="mstResultado" style="margin-top: 16px;" hidden>
+            <div class="metricas">
+              <div class="metrica">
+                <span class="metrica__valor" id="mstCosto">—</span>
+                <span class="metrica__nombre">Costo Total del MST (CA)</span>
+              </div>
+              <div class="metrica">
+                <span class="metrica__valor" id="mstCantidadAristas">—</span>
+                <span class="metrica__nombre">Aristas Seleccionadas (V - 1)</span>
+              </div>
+            </div>
+            <h3 style="margin-top: 14px;">Enlaces troncales seleccionados:</h3>
+            <ul id="mstListaAristas" class="lista-carga"></ul>
+          </div>
+
+          <div class="nota" style="margin-top: 16px;">
+            <strong>Estructura Union-Find DSU propia.</strong> Kruskal ordena las aristas con nuestro MergeSort propio
+            y detecta ciclos con compresión de caminos y unión por rango en <strong>O(E &middot; &alpha;(V))</strong>.
+            Costo óptimo global: <strong>72 CA</strong> (7 aristas).
           </div>
         </div>
       </div>
