@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
-import uade.prog3.tpo.dto.MstResponseDTO.AristaMstDTO;
 
 /**
  * UNIDAD: Árbol Generador Mínimo - MST (Hito 5) - PUNTAJE: 2 puntos (Prim 1 pt, Kruskal 1 pt).
