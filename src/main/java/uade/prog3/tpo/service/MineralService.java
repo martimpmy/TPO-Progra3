@@ -14,6 +14,8 @@ import uade.prog3.tpo.dto.OrdenamientoResponseDTO;
 import uade.prog3.tpo.exception.MineralNoEncontradoException;
 import uade.prog3.tpo.model.Mineral;
 import uade.prog3.tpo.repository.MineralRepository;
+import uade.prog3.tpo.algorithm.Mochila01;
+import uade.prog3.tpo.dto.MochilaResponseDTO;
 
 @Service
 public class MineralService {
@@ -21,6 +23,8 @@ public class MineralService {
     private final MineralRepository mineralRepository;
     private final Ordenamiento ordenamiento = new Ordenamiento();
     private final GreedyCarga greedyCarga = new GreedyCarga();
+    // Hito 6: algoritmo de mochila 0/1 mediante Programación Dinámica.
+    private final Mochila01 mochila01 = new Mochila01();
 
     public MineralService(MineralRepository mineralRepository) {
         this.mineralRepository = mineralRepository;
@@ -108,28 +112,79 @@ public class MineralService {
                 "Dirección inválida: '" + direccion + "'. Opciones válidas: 'desc', 'asc'.");
     }
 
-    /** Hito 3: carga rápida por ratio valor/peso sobre los minerales recibidos en el request. */
+    
+    /** Hito 3: carga rápida por ratio valor/peso. */
     public GreedyResponseDTO cargarGreedy(List<MineralDTO> dtos, Double capacidad) {
         if (capacidad == null) {
             throw new IllegalArgumentException("Falta 'capacidadBodega'");
         }
-        if (capacidad < 0) {
-            throw new IllegalArgumentException("La capacidad de la bodega no puede ser negativa");
+        if (!Double.isFinite(capacidad) || capacidad < 0) {
+            throw new IllegalArgumentException(
+                    "La capacidad de la bodega debe ser un número finito no negativo"
+            );
         }
         if (dtos == null || dtos.isEmpty()) {
-            throw new IllegalArgumentException("Se debe enviar al menos un mineral en 'itemsDisponibles'");
+            throw new IllegalArgumentException(
+                    "Se debe enviar al menos un mineral en 'itemsDisponibles'"
+            );
         }
 
-        GreedyCarga.ResultadoGreedy resultado = greedyCarga.cargar(aModelos(dtos), capacidad);
+        GreedyCarga.ResultadoGreedy resultado =
+                greedyCarga.cargar(aModelos(dtos), capacidad);
 
         return new GreedyResponseDTO(
                 "Greedy (Selección por Ratio Valor/Peso)",
                 capacidad,
                 redondear(resultado.pesoOcupado()),
                 redondear(resultado.valorTotal()),
-                resultado.minerales().stream().map(MineralDTO::fromModel).toList()
+                resultado.minerales().stream()
+                        .map(MineralDTO::fromModel)
+                        .toList()
         );
     }
+
+    /**
+     * Hito 6: carga óptima mediante mochila 0/1 con Programación Dinámica.
+     * Devuelve los minerales elegidos y la matriz DP.
+     */
+    public MochilaResponseDTO cargarDP(
+            List<MineralDTO> dtos,
+            Double capacidad
+    ) {
+        if (capacidad == null) {
+            throw new IllegalArgumentException("Falta 'capacidadBodega'");
+        }
+        if (!Double.isFinite(capacidad) || capacidad < 0) {
+            throw new IllegalArgumentException(
+                    "La capacidad de la bodega debe ser un número finito no negativo"
+            );
+        }
+        if (dtos == null || dtos.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Se debe enviar al menos un mineral en 'itemsDisponibles'"
+            );
+        }
+
+        List<Mineral> minerales = aModelos(dtos);
+
+        Mochila01.ResultadoMochila resultado =
+                mochila01.resolver(minerales, capacidad);
+
+        List<MineralDTO> seleccionados = resultado.minerales()
+                .stream()
+                .map(MineralDTO::fromModel)
+                .toList();
+
+        return new MochilaResponseDTO(
+                "Programación Dinámica (Mochila 0/1)",
+                capacidad,
+                redondear(resultado.pesoOcupado()),
+                redondear(resultado.valorTotal()),
+                seleccionados,
+                resultado.matrizDP()
+        );
+    }
+
 
     /** Evita mostrar sumas como 0.30000000000000004 en la respuesta. */
     private double redondear(double x) {
