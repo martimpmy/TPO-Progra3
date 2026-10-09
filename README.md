@@ -85,6 +85,11 @@ Núcleo de Plasma (5 t, 50 CG) y Aleación de Titanio (5 t, 50 CG), Greedy elige
 Cristal (ratio 11) y ya no entra nada más: **66 CG**. La solución óptima carga Núcleo +
 Titanio: **100 CG**.
 
+Esa solución óptima la calcula la Mochila 0/1 con Programación Dinámica
+(`POST /api/bodega/cargar-optimo`), que completa la matriz `dp[i][c]` y recupera los
+minerales elegidos recorriéndola hacia atrás. El paso a paso está en
+[docs/CONTRAEJEMPLO.md](docs/CONTRAEJEMPLO.md).
+
 ## Cómo ejecutarlo
 
 Requisitos: **JDK 21** (en Ubuntu: `sudo apt install openjdk-21-jdk-headless`) y una
@@ -115,3 +120,4 @@ Tests (no necesitan la base de datos):
 ## Documentación
 
 - [Catálogo de endpoints, con complejidades](docs/ENDPOINTS.md)
+- [Contraejemplo Greedy vs. Mochila 0/1, con la matriz DP paso a paso](docs/CONTRAEJEMPLO.md)

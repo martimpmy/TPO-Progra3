@@ -181,7 +181,8 @@ public class MineralService {
                 redondear(resultado.pesoOcupado()),
                 redondear(resultado.valorTotal()),
                 seleccionados,
-                resultado.matrizDP()
+                resultado.matrizDP(),
+                resultado.factorEscala()
         );
     }
 

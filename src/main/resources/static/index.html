@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Odisea Galáctica — Computadora de a bordo</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
-  <link rel="stylesheet" href="/css/styles.css?v=2">
+  <link rel="stylesheet" href="/css/styles.css?v=4">
 </head>
 <body>
   <div class="app">
@@ -25,7 +25,9 @@
       <button class="pestania" role="tab" id="tab-bodega" aria-controls="panel-bodega" aria-selected="false" tabindex="-1">Bodega</button>
       <button class="pestania" role="tab" id="tab-carga" aria-controls="panel-carga" aria-selected="false" tabindex="-1">Carga rápida</button>
       <button class="pestania" role="tab" id="tab-rutas" aria-controls="panel-rutas" aria-selected="false" tabindex="-1">Salto Hiperespacial y MST</button>
-      <span class="pestania pestania--proxima" title="Hito 6 en adelante">Hito 6 en adelante · próximamente</span>
+      <button class="pestania" role="tab" id="tab-optima" aria-controls="panel-optima" aria-selected="false" tabindex="-1">Carga óptima</button>
+      <button class="pestania" role="tab" id="tab-telemetria" aria-controls="panel-telemetria" aria-selected="false" tabindex="-1">Telemetría</button>
+      <span class="pestania pestania--proxima" title="Hito 8 en adelante">Hito 8 en adelante · próximamente</span>
     </nav>
 
     <!-- ============ MAPA ESTELAR (BFS / DFS) ============ -->
@@ -278,9 +280,137 @@
         </div>
       </div>
     </section>
+
+    <!-- ============ CARGA ÓPTIMA (Greedy vs. Mochila 0/1 con DP) ============ -->
+    <section id="panel-optima" class="panel" role="tabpanel" aria-labelledby="tab-optima" hidden>
+      <div class="grilla grilla--bodega">
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Optimización Cuántica de Bodega</h2>
+            <span class="chip chip--violeta">Hito 6 · Mochila 0/1</span>
+          </div>
+
+          <div id="optimaResultado" hidden>
+            <div class="comparativa">
+              <div id="optimaGreedy">
+                <h3>Carga voraz (Greedy)</h3>
+                <div class="metrica"><span class="metrica__valor" id="optimaGreedyValor">—</span><span class="metrica__nombre">Créditos Galácticos</span></div>
+                <p class="ayuda" id="optimaGreedyPeso"></p>
+                <ol id="optimaGreedyLista" class="lista-carga"></ol>
+              </div>
+              <div id="optimaDP">
+                <h3>Carga óptima (DP)</h3>
+                <div class="metrica"><span class="metrica__valor" id="optimaDPValor">—</span><span class="metrica__nombre">Créditos Galácticos</span></div>
+                <p class="ayuda" id="optimaDPPeso"></p>
+                <ol id="optimaDPLista" class="lista-carga"></ol>
+              </div>
+            </div>
+            <p id="optimaVeredicto" class="resultado-linea" aria-live="polite"></p>
+
+            <h3>Matriz DP</h3>
+            <p class="ayuda">Cada fila agrega un mineral y cada columna es una capacidad disponible, en toneladas. La celda resaltada es el valor óptimo.</p>
+            <div class="tabla-envoltorio">
+              <table id="optimaMatriz" class="matriz"></table>
+            </div>
+            <p id="optimaMatrizNota" class="ayuda" hidden></p>
+          </div>
+          <p id="optimaVacio" class="vacio">Indicá la capacidad y compará las dos estrategias sobre los minerales guardados en la pestaña Bodega, o probá el contraejemplo del informe.</p>
+        </div>
+
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Bodega de la nave</h2>
+          </div>
+          <form id="formOptima">
+            <label class="campo">
+              <span>Capacidad máxima (toneladas)</span>
+              <input id="capacidadOptima" type="number" min="0" step="any" value="10" required>
+            </label>
+            <button id="btnComparar" class="boton boton--primario" type="submit">Comparar Greedy vs. DP</button>
+          </form>
+          <p class="ayuda" style="margin-top: 12px;">
+            <button id="btnContraejemplo" class="boton boton--enlace" type="button">Probar el contraejemplo del informe</button>
+            (3 minerales, capacidad 10 t).
+          </p>
+          <div class="nota">
+            <strong>Programación Dinámica.</strong> <code>dp[i][c]</code> es el máximo valor usando los primeros
+            <code>i</code> minerales con capacidad <code>c</code>: se queda con el mayor entre no cargar el mineral
+            (<code>dp[i-1][c]</code>) y cargarlo (<code>dp[i-1][c - peso] + valor</code>). Los minerales elegidos se
+            recuperan recorriendo la matriz hacia atrás. Garantiza el óptimo en <code>O(N · W)</code> de tiempo y espacio.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TELEMETRÍA (Floyd-Warshall, todos contra todos) ============ -->
+    <section id="panel-telemetria" class="panel" role="tabpanel" aria-labelledby="tab-telemetria" hidden>
+      <div class="grilla grilla--mapa">
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Matriz de Telemetría Galáctica</h2>
+            <span class="chip chip--violeta">Hito 7 · Floyd-Warshall</span>
+          </div>
+
+          <div id="telemetriaLuz" class="luz" role="status" hidden>
+            <span class="luz__punto" aria-hidden="true"></span>
+            <span id="telemetriaLuzTexto"></span>
+          </div>
+
+          <div id="telemetriaResultado" hidden>
+            <p class="ayuda">Consumo mínimo en Celdas de Antimateria (CA) para ir de la estación de la fila a la de la columna. Cuanto más intenso el color, más caro el viaje.</p>
+            <div class="tabla-envoltorio">
+              <table id="telemetriaMatriz" class="matriz"></table>
+            </div>
+          </div>
+          <p id="telemetriaVacio" class="vacio">Calculá la telemetría para ver las distancias entre todos los pares de estaciones.</p>
+        </div>
+
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Computadora de telemetría</h2>
+          </div>
+
+          <button id="btnTelemetria" class="boton boton--primario" type="button">Calcular todas las distancias</button>
+
+          <div id="telemetriaComparativa" hidden>
+            <h3>Estados expandidos</h3>
+            <div class="metricas metricas--dos">
+              <div class="metrica"><span class="metrica__valor" id="telemetriaFloyd">—</span><span class="metrica__nombre">Floyd-Warshall · V³</span></div>
+              <div class="metrica"><span class="metrica__valor" id="telemetriaDijkstra">—</span><span class="metrica__nombre">Dijkstra × V</span></div>
+            </div>
+            <p class="ayuda" id="telemetriaComparativaTexto"></p>
+          </div>
+
+          <h3>Simular una anomalía</h3>
+          <p class="ayuda">Agrega una ruta de un solo sentido solo para este cálculo: no se guarda en la base. Con un costo negativo puede formar un ciclo negativo.</p>
+          <form id="formAnomalia">
+            <label class="campo">
+              <span>Desde</span>
+              <select id="simOrigen" required></select>
+            </label>
+            <label class="campo">
+              <span>Hacia</span>
+              <select id="simDestino" required></select>
+            </label>
+            <label class="campo">
+              <span>Costo (CA)</span>
+              <input id="simCosto" type="number" step="any" value="-30" required>
+            </label>
+            <button id="btnAnomalia" class="boton" type="submit">Calcular con la ruta simulada</button>
+          </form>
+
+          <div class="nota">
+            <strong>Programación Dinámica sobre grafos.</strong> Tres bucles anidados <code>k, i, j</code> prueban si pasar
+            por la estación <code>k</code> abarata el viaje: <code>D[i][j] = min(D[i][j], D[i][k] + D[k][j])</code>.
+            Tiempo <code>O(V³)</code>, espacio <code>O(V²)</code>. Admite costos negativos, y si al terminar queda
+            <code>D[i][i] &lt; 0</code> hay un <strong>ciclo negativo</strong>.
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div id="avisos" class="avisos" aria-live="assertive"></div>
-  <script src="/js/app.js?v=2"></script>
+  <script src="/js/app.js?v=4"></script>
 </body>
 </html>

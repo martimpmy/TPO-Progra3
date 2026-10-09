@@ -9,15 +9,14 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import uade.prog3.tpo.algorithm.GreedyCarga.ResultadoGreedy;
 import uade.prog3.tpo.algorithm.Mochila01.ResultadoMochila;
 import uade.prog3.tpo.model.Mineral;
 
-// >>> HITO 6: pruebas del algoritmo DP, recuperación de ítems y comparación con Greedy.
+// >>> HITO 6: pruebas del algoritmo DP y recuperación de ítems.
+// La comparación con Greedy está en ContraejemploGreedyVsDPTest.
 class Mochila01Test {
 
     private final Mochila01 mochila = new Mochila01();
-    private final GreedyCarga greedy = new GreedyCarga();
 
     private static final List<Mineral> CONTRAEJEMPLO = List.of(
             new Mineral("Cristal de Taquiones", 6, 66),
@@ -40,22 +39,6 @@ class Mochila01Test {
                         "Núcleo de Plasma",
                         "Aleación de Titanio"
                 );
-    }
-
-    // >>> HITO 6 - TEST CONTRAEJEMPLO:
-    // Greedy obtiene 66 CG y DP obtiene 100 CG.
-    @Test
-    @DisplayName("El contraejemplo demuestra que DP supera a Greedy")
-    void dpSuperaAGreedy() {
-
-        ResultadoGreedy greedyResult = greedy.cargar(CONTRAEJEMPLO, 10);
-        ResultadoMochila dpResult = mochila.resolver(CONTRAEJEMPLO, 10);
-
-        assertThat(greedyResult.valorTotal()).isEqualTo(66.0);
-        assertThat(dpResult.valorTotal()).isEqualTo(100.0);
-
-        assertThat(dpResult.valorTotal())
-                .isGreaterThan(greedyResult.valorTotal());
     }
 
     @Test
@@ -125,6 +108,14 @@ class Mochila01Test {
 
         assertThat(resultado.minerales()).isEmpty();
         assertThat(resultado.valorTotal()).isZero();
+    }
+
+    @Test
+    @DisplayName("Una capacidad que no entra en memoria se rechaza sin reservar la matriz")
+    void capacidadDemasiadoGrande() {
+
+        assertThatThrownBy(() -> mochila.resolver(CONTRAEJEMPLO, 1e9))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

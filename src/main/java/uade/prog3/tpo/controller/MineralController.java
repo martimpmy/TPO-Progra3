@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import uade.prog3.tpo.dto.MineralDTO;
 import uade.prog3.tpo.dto.OrdenamientoResponseDTO;
 import uade.prog3.tpo.service.MineralService;
-import uade.prog3.tpo.dto.MochilaResponseDTO;
-import uade.prog3.tpo.dto.GreedyResponseDTO;
 
 /**
  * Minerales de la bodega: alta, consulta y baja en Neo4j, y ordenamiento propio (Hito 2).
@@ -64,18 +62,4 @@ public class MineralController {
     ) {
         return mineralService.ordenar(minerales, algoritmo, criterio, direccion);
     }
-
-    
-    /**
-     * Hito 6: POST /api/minerales/mochila-dp?capacidad=10
-     * Calcula la carga óptima mediante Programación Dinámica.
-     */
-    @PostMapping("/mochila-dp")
-    public MochilaResponseDTO cargarDP(
-            @RequestParam Double capacidad,
-            @RequestBody List<MineralDTO> minerales
-    ) {
-        return mineralService.cargarDP(minerales, capacidad);
-    }
-
 }

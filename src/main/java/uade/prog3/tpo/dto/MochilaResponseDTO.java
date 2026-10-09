@@ -8,6 +8,8 @@ public record MochilaResponseDTO(
         double pesoOcupado,
         double valorTotalObtenido,
         List<MineralDTO> mineralesCargados,
-        double[][] matrizDP
+        double[][] matrizDP,
+        /** La columna c de la matriz equivale a una capacidad de c / factorEscala toneladas. */
+        int factorEscala
 ) {
 }

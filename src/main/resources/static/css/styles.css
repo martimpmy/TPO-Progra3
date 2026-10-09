@@ -192,6 +192,29 @@ select:disabled, input:disabled { opacity: 0.5; }
 .lista-carga li span:last-child { font-family: var(--mono); font-size: 0.85rem; color: var(--tenue); white-space: nowrap; }
 .lista-carga--afuera li { opacity: 0.6; }
 
+/* ---------- Carga óptima ---------- */
+.comparativa { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.comparativa .metrica { margin-bottom: 8px; }
+.comparativa__mejor .metrica__valor { color: var(--verde); }
+@media (max-width: 600px) { .comparativa { grid-template-columns: 1fr; } }
+
+.matriz { border-collapse: collapse; font-family: var(--mono); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.matriz th, .matriz td { padding: 5px 9px; text-align: right; border: 1px solid var(--borde); white-space: nowrap; }
+.matriz th { color: var(--tenue); font-weight: 600; }
+.matriz th:first-child { text-align: left; font-family: inherit; }
+.matriz .matriz__optimo { background: var(--cian-fondo); color: var(--cian); font-weight: 700; }
+
+/* ---------- Telemetría ---------- */
+.metricas--dos { grid-template-columns: repeat(2, 1fr); }
+.matriz .matriz__diagonal { color: var(--tenue); }
+.matriz th[title] { cursor: help; }
+
+.luz { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 14px; border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie-2); font-size: 0.9rem; }
+.luz[hidden] { display: none; }
+.luz__punto { width: 11px; height: 11px; border-radius: 50%; flex: none; background: var(--verde); box-shadow: 0 0 8px var(--verde); }
+.luz--alerta { border-color: rgba(248, 113, 113, 0.5); }
+.luz--alerta .luz__punto { background: var(--rojo); box-shadow: 0 0 10px var(--rojo); animation: pulso 0.9s ease-in-out infinite; }
+
 /* ---------- Avisos ---------- */
 .avisos { position: fixed; right: 20px; bottom: 20px; display: grid; gap: 8px; z-index: 10; max-width: min(380px, calc(100vw - 40px)); }
 .aviso { padding: 12px 16px; border-radius: 10px; background: var(--superficie-2); border: 1px solid var(--borde); border-left: 4px solid var(--cian); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); animation: aparecer 0.2s ease-out; font-size: 0.9rem; }
