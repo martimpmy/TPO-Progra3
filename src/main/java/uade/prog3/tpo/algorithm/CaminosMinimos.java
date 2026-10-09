@@ -152,6 +152,60 @@ public class CaminosMinimos {
     }
 
     /**
+     * Distancias desde un origen hacia todos los vértices, con los contadores que usa
+     * la comparativa del Hito 7 (Floyd-Warshall contra Dijkstra corrido V veces).
+     * distancias[v] vale Integer.MAX_VALUE si v no es alcanzable.
+     */
+    public record ResultadoDesdeOrigen(int[] distancias, int nodosExpandidos, int aristasExaminadas) {
+    }
+
+    /**
+     * Dijkstra con Min-Heap desde un origen, sin parada temprana: expande todos los alcanzables.
+     */
+    public ResultadoDesdeOrigen dijkstraDesde(Grafo grafo, int origen) {
+        if (grafo == null) {
+            throw new IllegalArgumentException("El grafo no puede ser nulo");
+        }
+        int cantidadVertices = grafo.cantidadVertices();
+        if (origen < 0 || origen >= cantidadVertices) {
+            throw new IllegalArgumentException("No existe el vértice de índice " + origen);
+        }
+
+        int[] dist = new int[cantidadVertices];
+        boolean[] visitado = new boolean[cantidadVertices];
+        for (int i = 0; i < cantidadVertices; i++) {
+            dist[i] = Integer.MAX_VALUE;
+        }
+
+        int nodosExpandidos = 0;
+        int aristasExaminadas = 0;
+
+        dist[origen] = 0;
+        PriorityQueue<NodoDistancia> colaPrioridad = new PriorityQueue<>();
+        colaPrioridad.add(new NodoDistancia(origen, 0));
+
+        while (!colaPrioridad.isEmpty()) {
+            int u = colaPrioridad.poll().vertice();
+            if (visitado[u]) {
+                continue;
+            }
+            visitado[u] = true;
+            nodosExpandidos++;
+
+            for (Grafo.Arista arista : grafo.vecinos(u)) {
+                aristasExaminadas++;
+                int v = arista.destino();
+                if (!visitado[v] && dist[u] + arista.peso() < dist[v]) {
+                    dist[v] = dist[u] + arista.peso();
+                    colaPrioridad.add(new NodoDistancia(v, dist[v]));
+                }
+            }
+        }
+
+        return new ResultadoDesdeOrigen(dist, nodosExpandidos, aristasExaminadas);
+    }
+
+    /**
      * Adaptador para compatibilidad estricta con el scaffold original del docente.
      */
     public Camino dijkstraScaffold(Grafo grafo, String origenId, String destinoId) {

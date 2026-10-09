@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uade.prog3.tpo.dto.DijkstraResponseDTO;
+import uade.prog3.tpo.dto.FloydWarshallResponseDTO;
 import uade.prog3.tpo.dto.MstResponseDTO;
 import uade.prog3.tpo.service.GrafoService;
 
@@ -49,5 +50,21 @@ public class NavegacionController {
             @RequestParam(defaultValue = "kruskal") String metodo
     ) {
         return grafoService.mst(metodo);
+    }
+
+    /**
+     * Hito 7: Matriz de Telemetría Galáctica (Floyd-Warshall entre todos los pares).
+     *
+     * GET /api/navegacion/todos-contra-todos
+     * Opcional: ?simularOrigen=NOVA&simularDestino=ORION&simularCosto=-30 agrega una ruta
+     * dirigida solo en memoria para probar la detección de ciclos negativos.
+     */
+    @GetMapping("/navegacion/todos-contra-todos")
+    public FloydWarshallResponseDTO todosContraTodos(
+            @RequestParam(required = false) String simularOrigen,
+            @RequestParam(required = false) String simularDestino,
+            @RequestParam(required = false) Double simularCosto
+    ) {
+        return grafoService.todosContraTodos(simularOrigen, simularDestino, simularCosto);
     }
 }

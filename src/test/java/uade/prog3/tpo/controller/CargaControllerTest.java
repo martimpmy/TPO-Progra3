@@ -16,7 +16,7 @@ import uade.prog3.tpo.repository.MineralRepository;
 import uade.prog3.tpo.service.MineralService;
 
 /**
- * Controller + service reales; el repositorio se simula porque el Greedy no usa la base.
+ * Controller + service reales; el repositorio se simula porque ni el Greedy ni la DP usan la base.
  */
 @WebMvcTest(CargaController.class)
 @Import(MineralService.class)
@@ -73,6 +73,52 @@ class CargaControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mineralesCargados.length()").value(2))
                 .andExpect(jsonPath("$.pesoOcupado").value(0.3));
+    }
+
+    @Test
+    @DisplayName("Hito 6: cargar-optimo responde 100 CG con Plasma + Titanio y la matriz DP")
+    void cargaOptimaDelContraejemplo() throws Exception {
+        mvc.perform(post("/api/bodega/cargar-optimo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "capacidadBodega": 10,
+                                  "itemsDisponibles": [
+                                    { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66 },
+                                    { "nombre": "Núcleo de Plasma", "peso": 5, "valor": 50 },
+                                    { "nombre": "Aleación de Titanio", "peso": 5, "valor": 50 }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metodo").value("Programación Dinámica (Mochila 0/1)"))
+                .andExpect(jsonPath("$.capacidadBodega").value(10.0))
+                .andExpect(jsonPath("$.pesoOcupado").value(10.0))
+                .andExpect(jsonPath("$.valorTotalObtenido").value(100.0))
+                .andExpect(jsonPath("$.mineralesCargados.length()").value(2))
+                .andExpect(jsonPath("$.mineralesCargados[0].nombre").value("Núcleo de Plasma"))
+                .andExpect(jsonPath("$.mineralesCargados[1].nombre").value("Aleación de Titanio"))
+                .andExpect(jsonPath("$.matrizDP.length()").value(4))
+                .andExpect(jsonPath("$.matrizDP[3][10]").value(100.0))
+                .andExpect(jsonPath("$.factorEscala").value(1));
+    }
+
+    @Test
+    @DisplayName("Hito 6: cargar-optimo rechaza pedidos inválidos con 400 y sin stack trace")
+    void cargaOptimaPedidosInvalidos() throws Exception {
+        String[] cuerpos = {
+                "{\"itemsDisponibles\":[{\"nombre\":\"A\",\"peso\":1,\"valor\":1}]}",
+                "{\"capacidadBodega\":-1,\"itemsDisponibles\":[{\"nombre\":\"A\",\"peso\":1,\"valor\":1}]}",
+                "{\"capacidadBodega\":10,\"itemsDisponibles\":[]}",
+                "{\"capacidadBodega\":1000000000,\"itemsDisponibles\":[{\"nombre\":\"A\",\"peso\":1,\"valor\":1}]}",
+                ""
+        };
+        for (String cuerpo : cuerpos) {
+            mvc.perform(post("/api/bodega/cargar-optimo").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.codigo").value(400))
+                    .andExpect(jsonPath("$.trace").doesNotExist());
+        }
     }
 
     @Test

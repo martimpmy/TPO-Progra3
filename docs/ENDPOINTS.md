@@ -187,6 +187,65 @@ respeta el orden de entrada, así el resultado es determinístico).
 
 ---
 
+### POST /api/bodega/cargar-optimo  (Hito 6)
+
+Carga **óptima** de la bodega resolviendo la Mochila 0/1 con **Programación Dinámica**.
+Recibe el mismo cuerpo que `cargar-greedy`, así se pueden comparar los dos resultados.
+
+**Cuerpo de Entrada:**
+```json
+{
+  "capacidadBodega": 10,
+  "itemsDisponibles": [
+    { "nombre": "Cristal de Taquiones", "peso": 6, "valor": 66 },
+    { "nombre": "Núcleo de Plasma", "peso": 5, "valor": 50 },
+    { "nombre": "Aleación de Titanio", "peso": 5, "valor": 50 }
+  ]
+}
+```
+
+**Respuesta (200 OK):**
+```json
+{
+  "metodo": "Programación Dinámica (Mochila 0/1)",
+  "capacidadBodega": 10.0,
+  "pesoOcupado": 10.0,
+  "valorTotalObtenido": 100.0,
+  "mineralesCargados": [
+    { "nombre": "Núcleo de Plasma", "peso": 5.0, "valor": 50.0, "ratio": 10.0 },
+    { "nombre": "Aleación de Titanio", "peso": 5.0, "valor": 50.0, "ratio": 10.0 }
+  ],
+  "matrizDP": [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 66, 66, 66, 66, 66],
+    [0, 0, 0, 0, 0, 50, 66, 66, 66, 66, 66],
+    [0, 0, 0, 0, 0, 50, 66, 66, 66, 66, 100]
+  ],
+  "factorEscala": 1
+}
+```
+Sobre estos mismos datos Greedy obtiene **66 CG**: el paso a paso está en
+[CONTRAEJEMPLO.md](CONTRAEJEMPLO.md).
+
+`matrizDP[i][c]` es el máximo valor usando los primeros `i` minerales con capacidad `c`.
+Si hay pesos decimales, se escalan a enteros: la columna `c` equivale a `c / factorEscala` toneladas
+(por ejemplo, con pesos de 0.1 t el factor es 10).
+
+**Errores (400 Bad Request):** falta `capacidadBodega` o es negativa; `itemsDisponibles`
+falta o está vacía; algún mineral inválido; pesos con más de 6 decimales; matriz de más de
+5.000.000 de celdas (capacidad demasiado grande); JSON mal formado.
+
+**Recurrencia:**
+`dp[i][c] = max(dp[i-1][c], dp[i-1][c - peso_i] + valor_i)` si `peso_i ≤ c`; si no, `dp[i-1][c]`.
+Caso base: `dp[0][c] = 0`.
+
+**Complejidad:** O(N · W) — se completa una celda por cada mineral y cada capacidad de 0 a W
+(W = capacidad escalada a enteros). La recuperación de ítems agrega O(N).
+**Espacio:** O(N · W) — se conserva la matriz completa para poder recuperar los minerales elegidos.
+**Estructura usada:** matriz `double[N+1][W+1]`.
+
+---
+
 ### GET /api/grafo/recorrer  (Hito 4)
 
 Recorre la red de estaciones desde un origen con **BFS** (por niveles) o **DFS** (en profundidad)
@@ -325,3 +384,93 @@ Diseña la **Red Troncal de Balizas Subespaciales** interconectando todas las es
 - `GET /api/grafo/prim?origen=SOL`
 - `GET /api/grafo/kruskal`
 
+---
+
+### GET /api/navegacion/todos-contra-todos  (Hito 7)
+
+Calcula el **consumo mínimo entre todos los pares de estaciones** con **Floyd-Warshall**,
+detecta **ciclos de costo negativo** y compara los estados expandidos contra correr Dijkstra
+una vez desde cada estación.
+
+**Parámetros de Consulta (opcionales, van los tres juntos o ninguno):**
+- `simularOrigen`, `simularDestino`: ids de dos estaciones distintas.
+- `simularCosto`: costo en CA de una ruta **dirigida** `simularOrigen → simularDestino`; puede ser negativo.
+
+La ruta simulada se agrega solo a la matriz en memoria de esa consulta y **no se guarda en Neo4j**.
+Existe para probar la detección: las rutas persistidas tienen costo positivo, así que el grafo
+real nunca tiene ciclos negativos.
+
+**Ejemplo:** `GET /api/navegacion/todos-contra-todos`
+
+**Respuesta (200 OK):**
+```json
+{
+  "algoritmo": "Floyd-Warshall (Programación Dinámica)",
+  "unidad": "Celdas de Antimateria (CA)",
+  "estaciones": [
+    { "id": "ALPHA", "nombre": "Alpha Centauri" },
+    { "id": "CITADEL", "nombre": "Ciudadela Omega" },
+    { "id": "KEPLER", "nombre": "Colonia Kepler" },
+    { "id": "NOVA", "nombre": "Puesto Nova" },
+    { "id": "ORION", "nombre": "Nebulosa Orion" },
+    { "id": "SIRIUS", "nombre": "Puerto Sirio" },
+    { "id": "SOL", "nombre": "Base Solar" },
+    { "id": "VEGA", "nombre": "Minas de Vega" }
+  ],
+  "distancias": [
+    [0, 44, 23, 37, 32, 8, 12, 18],
+    [44, 0, 21, 7, 18, 36, 56, 31],
+    [23, 21, 0, 14, 9, 15, 35, 10],
+    [37, 7, 14, 0, 11, 29, 49, 24],
+    [32, 18, 9, 11, 0, 24, 44, 19],
+    [8, 36, 15, 29, 24, 0, 20, 25],
+    [12, 56, 35, 49, 44, 20, 0, 30],
+    [18, 31, 10, 24, 19, 25, 30, 0]
+  ],
+  "cicloNegativo": false,
+  "estacionesEnCicloNegativo": [],
+  "alerta": null,
+  "rutaSimulada": null,
+  "comparativa": {
+    "vertices": 8,
+    "aristas": 12,
+    "estadosFloydWarshall": 512,
+    "estadosDijkstraVVeces": 256,
+    "nodosExpandidosDijkstra": 64,
+    "aristasExaminadasDijkstra": 192
+  }
+}
+```
+`distancias[i][j]` es el costo de ir de `estaciones[i]` a `estaciones[j]`; una celda `null` indica
+que no hay camino. La fila de `SOL` coincide con el Dijkstra del Hito 5 (`SOL → CITADEL` = **56 CA**).
+
+**Con ciclo negativo:** `GET /api/navegacion/todos-contra-todos?simularOrigen=NOVA&simularDestino=ORION&simularCosto=-30`
+responde `200 OK` con `"cicloNegativo": true`, `"distancias": null`, las estaciones afectadas en
+`estacionesEnCicloNegativo` y el mensaje en `alerta`. El ciclo es `ORION → NOVA` (11) + `NOVA → ORION` (−30) = −19 CA:
+cada vuelta abarata el viaje, así que el mínimo no existe y no se devuelve la matriz.
+
+**Errores:** `400` si faltan parámetros de la simulación, `simularCosto` no es un número o las dos
+estaciones son la misma; `404` si alguna estación no existe; `503` si no se puede conectar a Neo4j.
+
+**Recurrencia:** `D_k[i][j] = min(D_{k-1}[i][j], D_{k-1}[i][k] + D_{k-1}[k][j])`, con `D` inicial igual a la
+matriz de adyacencia (0 en la diagonal, ∞ donde no hay ruta).
+
+**Detección de ciclos negativos:** al terminar se revisa la diagonal; si `D[i][i] < 0`, la estación `i`
+puede volver a sí misma con costo negativo.
+
+**Comparativa de estados expandidos (V = 8, E = 12):**
+
+| Estrategia | Qué se cuenta | Estados |
+|---|---|:---:|
+| Floyd-Warshall | ternas `(k, i, j)` evaluadas: V³ | **512** |
+| Dijkstra × V | nodos extraídos del heap (V · V = 64) + aristas examinadas (V · 2E = 192) | **256** |
+
+Los dos valores se **miden** con contadores en el código, no se calculan con la fórmula. En un grafo
+ralo como este conviene Dijkstra × V, cuya cota es O(V · (V + E) · log V); Floyd-Warshall conviene en
+grafos densos (E cercano a V²) y es el único de los dos que admite costos negativos.
+
+**Complejidad:** O(V³) — tres bucles anidados sobre los V vértices; armar la matriz desde la lista de
+adyacencia suma O(V² + E) y la revisión de la diagonal O(V).
+**Espacio:** O(V²) — una única matriz, que se actualiza en el lugar.
+**Estructura usada:** matriz de adyacencia `double[V][V]` con `Double.POSITIVE_INFINITY` como "sin ruta".
+El grafo se lee de Neo4j en **una sola consulta** y el algoritmo trabaja únicamente en memoria.

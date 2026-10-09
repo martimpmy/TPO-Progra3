@@ -205,6 +205,16 @@ async function cargarMapa() {
         if (estaciones.some((e) => e.id === "SOL")) selectDijkstraOrigen.value = "SOL";
         if (estaciones.some((e) => e.id === "CITADEL")) selectDijkstraDestino.value = "CITADEL";
     }
+
+    for (const id of ["simOrigen", "simDestino"]) {
+        $(id).replaceChildren(...estaciones.map((e) => {
+            const opcion = crear("option", null, `${e.nombre} (${e.id})`);
+            opcion.value = e.id;
+            return opcion;
+        }));
+    }
+    if (estaciones.some((e) => e.id === "NOVA")) $("simOrigen").value = "NOVA";
+    if (estaciones.some((e) => e.id === "ORION")) $("simDestino").value = "ORION";
 }
 
 function nodoDe(id) {
@@ -416,6 +426,13 @@ function mostrarTeoriaOrden() {
 
 const claveMineral = (m) => `${m.nombre}|${m.peso}|${m.valor}`;
 
+function itemDe(m) {
+    const li = crear("li");
+    li.append(crear("span", null, m.nombre),
+        crear("span", null, `${numero(m.peso)} t · ${numero(m.valor)} CG · ratio ${numero(m.valor / m.peso)}`));
+    return li;
+}
+
 async function cargarBodega(evento) {
     evento.preventDefault();
     if (estado.minerales.length === 0) {
@@ -445,12 +462,6 @@ async function cargarBodega(evento) {
     $("cargaBarraTexto").textContent = textoBarra;
     $("cargaBarra").setAttribute("aria-label", `Ocupación de la bodega: ${textoBarra}`);
 
-    const itemDe = (m) => {
-        const li = crear("li");
-        li.append(crear("span", null, m.nombre),
-            crear("span", null, `${numero(m.peso)} t · ${numero(m.valor)} CG · ratio ${numero(m.valor / m.peso)}`));
-        return li;
-    };
     $("cargaLista").replaceChildren(...r.mineralesCargados.map(itemDe));
     if (r.mineralesCargados.length === 0) {
         $("cargaLista").replaceChildren(crear("li", null, "Ningún mineral entra en esa capacidad."));
@@ -466,6 +477,86 @@ async function cargarBodega(evento) {
     });
     $("cargaAfueraTitulo").hidden = afuera.length === 0;
     $("cargaAfuera").replaceChildren(...afuera.map(itemDe));
+}
+
+/* ============================ Carga óptima (Greedy vs. Mochila 0/1) ============================ */
+
+const CONTRAEJEMPLO = MINERALES_EJEMPLO.slice(0, 3);
+const MAX_COLUMNAS_MATRIZ = 40; // con pesos decimales la matriz se escala y deja de ser legible
+
+function dibujarLadoComparativa(prefijo, r) {
+    $(`${prefijo}Valor`).textContent = numero(r.valorTotalObtenido);
+    $(`${prefijo}Peso`).textContent = `${numero(r.pesoOcupado)} de ${numero(r.capacidadBodega)} t ocupadas`;
+    $(`${prefijo}Lista`).replaceChildren(...r.mineralesCargados.map(itemDe));
+    if (r.mineralesCargados.length === 0) {
+        $(`${prefijo}Lista`).replaceChildren(crear("li", null, "Ningún mineral entra en esa capacidad."));
+    }
+}
+
+function dibujarMatrizDP(dp, minerales) {
+    const tabla = $("optimaMatriz");
+    const nota = $("optimaMatrizNota");
+    const filas = dp.matrizDP;
+    const columnas = filas[0].length;
+
+    if (columnas > MAX_COLUMNAS_MATRIZ) {
+        tabla.replaceChildren();
+        nota.hidden = false;
+        nota.textContent = `La matriz tiene ${filas.length} filas × ${columnas} columnas: es demasiado ancha para mostrarla acá.`;
+        return;
+    }
+    nota.hidden = true;
+
+    const cabecera = crear("tr");
+    cabecera.appendChild(crear("th", null, "Mineral \\ capacidad"));
+    for (let c = 0; c < columnas; c++) cabecera.appendChild(crear("th", null, numero(c / dp.factorEscala)));
+    const encabezado = crear("thead");
+    encabezado.appendChild(cabecera);
+
+    const cuerpo = crear("tbody");
+    filas.forEach((fila, i) => {
+        const tr = crear("tr");
+        tr.appendChild(crear("th", null, i === 0 ? "Sin minerales" : minerales[i - 1].nombre));
+        fila.forEach((valor, c) => {
+            const esOptimo = i === filas.length - 1 && c === columnas - 1;
+            tr.appendChild(crear("td", esOptimo ? "matriz__optimo" : null, numero(valor)));
+        });
+        cuerpo.appendChild(tr);
+    });
+    tabla.replaceChildren(encabezado, cuerpo);
+}
+
+async function compararCargas(minerales, boton) {
+    if (minerales.length === 0) {
+        avisar("No hay minerales guardados. Agregalos en la pestaña Bodega.");
+        return;
+    }
+    const disponibles = minerales.map(({ nombre, peso, valor }) => ({ nombre, peso, valor }));
+    const cuerpo = { capacidadBodega: parseFloat($("capacidadOptima").value), itemsDisponibles: disponibles };
+    let greedy, dp;
+    try {
+        [greedy, dp] = await conBotonOcupado(boton, "Calculando…", () => Promise.all([
+            enviarJson("/api/bodega/cargar-greedy", cuerpo),
+            enviarJson("/api/bodega/cargar-optimo", cuerpo)
+        ]));
+    } catch (e) {
+        avisar(e.message);
+        return;
+    }
+
+    $("optimaVacio").hidden = true;
+    $("optimaResultado").hidden = false;
+    dibujarLadoComparativa("optimaGreedy", greedy);
+    dibujarLadoComparativa("optimaDP", dp);
+
+    const diferencia = dp.valorTotalObtenido - greedy.valorTotalObtenido;
+    $("optimaDP").classList.toggle("comparativa__mejor", diferencia > 0);
+    $("optimaVeredicto").replaceChildren(...(diferencia > 0
+        ? [crear("strong", null, `DP supera a Greedy por ${numero(diferencia)} CG`),
+            ` · ${numero(dp.valorTotalObtenido)} contra ${numero(greedy.valorTotalObtenido)}: la elección voraz no fue la óptima.`]
+        : [`Con estos datos Greedy coincide con el óptimo (${numero(dp.valorTotalObtenido)} CG).`]));
+
+    dibujarMatrizDP(dp, disponibles);
 }
 
 /* ============================ Hito 5: Salto Hiperespacial y MST ============================ */
@@ -528,6 +619,77 @@ async function ejecutarMst() {
     }));
 }
 
+/* ============================ Hito 7: Telemetría (Floyd-Warshall) ============================ */
+
+function dibujarMatrizTelemetria(estaciones, distancias) {
+    const maximo = Math.max(1, ...distancias.flat().filter((d) => d !== null));
+
+    const cabecera = crear("tr");
+    cabecera.appendChild(crear("th", null, "Desde \\ hacia"));
+    for (const e of estaciones) {
+        const th = crear("th", null, e.id);
+        th.title = e.nombre;
+        cabecera.appendChild(th);
+    }
+    const encabezado = crear("thead");
+    encabezado.appendChild(cabecera);
+
+    const cuerpo = crear("tbody");
+    distancias.forEach((fila, i) => {
+        const tr = crear("tr");
+        const th = crear("th", null, estaciones[i].id);
+        th.title = estaciones[i].nombre;
+        tr.appendChild(th);
+        fila.forEach((d, j) => {
+            const td = crear("td", i === j ? "matriz__diagonal" : null, d === null ? "∞" : numero(d));
+            if (d !== null && i !== j) {
+                td.style.background = `rgba(56, 214, 238, ${(0.04 + 0.4 * Math.max(0, d) / maximo).toFixed(3)})`;
+            }
+            tr.appendChild(td);
+        });
+        cuerpo.appendChild(tr);
+    });
+    $("telemetriaMatriz").replaceChildren(encabezado, cuerpo);
+}
+
+async function calcularTelemetria(boton, simulacion) {
+    let ruta = "/api/navegacion/todos-contra-todos";
+    if (simulacion) {
+        ruta += `?simularOrigen=${encodeURIComponent(simulacion.origen)}`
+            + `&simularDestino=${encodeURIComponent(simulacion.destino)}`
+            + `&simularCosto=${encodeURIComponent(simulacion.costo)}`;
+    }
+    let r;
+    try {
+        r = await conBotonOcupado(boton, "Calculando…", () => api(ruta));
+    } catch (e) {
+        avisar(e.message);
+        return;
+    }
+
+    const simulada = r.rutaSimulada
+        ? ` Incluye la ruta simulada ${r.rutaSimulada.origen} → ${r.rutaSimulada.destino} (${numero(r.rutaSimulada.costoCA)} CA).`
+        : "";
+    $("telemetriaLuz").hidden = false;
+    $("telemetriaLuz").classList.toggle("luz--alerta", r.cicloNegativo);
+    $("telemetriaLuzTexto").textContent = (r.cicloNegativo
+        ? r.alerta
+        : "Sin anomalías gravitacionales: no hay ciclos de costo negativo.") + simulada;
+
+    $("telemetriaVacio").hidden = true;
+    $("telemetriaResultado").hidden = r.cicloNegativo;
+    if (!r.cicloNegativo) dibujarMatrizTelemetria(r.estaciones, r.distancias);
+
+    const c = r.comparativa;
+    $("telemetriaComparativa").hidden = false;
+    $("telemetriaFloyd").textContent = numero(c.estadosFloydWarshall);
+    $("telemetriaDijkstra").textContent = numero(c.estadosDijkstraVVeces);
+    $("telemetriaComparativaTexto").textContent =
+        `Con V = ${c.vertices} y E = ${c.aristas}, correr Dijkstra desde cada estación expande `
+        + `${numero(c.nodosExpandidosDijkstra)} nodos y examina ${numero(c.aristasExaminadasDijkstra)} aristas.`
+        + (r.rutaSimulada ? " Se mide sobre el grafo guardado: Dijkstra no admite costos negativos." : "");
+}
+
 /* ============================ Inicio ============================ */
 
 function cargarTodo() {
@@ -553,8 +715,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     $("formCarga").addEventListener("submit", cargarBodega);
 
+    $("formOptima").addEventListener("submit", (e) => {
+        e.preventDefault();
+        compararCargas(estado.minerales, $("btnComparar"));
+    });
+    $("btnContraejemplo").addEventListener("click", () => {
+        $("capacidadOptima").value = 10;
+        compararCargas(CONTRAEJEMPLO, $("btnContraejemplo"));
+    });
+
     $("btnDijkstra").addEventListener("click", ejecutarDijkstra);
     $("btnMst").addEventListener("click", ejecutarMst);
+
+    $("btnTelemetria").addEventListener("click", () => calcularTelemetria($("btnTelemetria")));
+    $("formAnomalia").addEventListener("submit", (e) => {
+        e.preventDefault();
+        calcularTelemetria($("btnAnomalia"), {
+            origen: $("simOrigen").value,
+            destino: $("simDestino").value,
+            costo: $("simCosto").value
+        });
+    });
 
     mostrarTeoriaRecorrido();
     mostrarTeoriaOrden();

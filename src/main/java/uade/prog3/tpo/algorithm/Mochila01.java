@@ -25,6 +25,7 @@ public class Mochila01 {
 
     private static final double EPSILON = 1e-9;
     private static final int MAX_DECIMALES = 6;
+    private static final long MAX_CELDAS = 5_000_000;
 
     public ResultadoMochila resolver(List<Mineral> minerales, double capacidad) {
 
@@ -60,6 +61,14 @@ public class Mochila01 {
             }
 
             pesos[i] = escalar(mineral.getPeso(), escala);
+        }
+
+        // La matriz ocupa (N + 1) * (W + 1) celdas: se rechaza antes de reservarla
+        // si no entra en memoria (por ejemplo, una capacidad de 1e9).
+        if ((long) (n + 1) * (capacidadEscalada + 1L) > MAX_CELDAS) {
+            throw new IllegalArgumentException(
+                    "La combinación de minerales y capacidad es demasiado grande para la matriz DP"
+            );
         }
 
         // >>> HITO 6 - DP:

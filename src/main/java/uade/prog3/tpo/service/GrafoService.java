@@ -7,8 +7,11 @@ import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uade.prog3.tpo.algorithm.CaminosMinimos;
+import uade.prog3.tpo.algorithm.FloydWarshall;
 import uade.prog3.tpo.algorithm.Grafo;
 import uade.prog3.tpo.algorithm.Recorridos;
+import uade.prog3.tpo.dto.FloydWarshallResponseDTO;
 import uade.prog3.tpo.dto.GrafoDTO;
 import uade.prog3.tpo.dto.RecorridoResponseDTO;
 import uade.prog3.tpo.dto.ResumenGrafoDTO;
@@ -186,6 +189,103 @@ public class GrafoService {
                 res.costoTotal(),
                 "Celdas de Antimateria (CA)",
                 aristasDTO
+        );
+    }
+
+    private final FloydWarshall floydWarshall = new FloydWarshall();
+
+    /**
+     * Hito 7: Floyd-Warshall entre todos los pares de estaciones, con detección de ciclos
+     * negativos y comparativa de estados expandidos contra correr Dijkstra V veces.
+     *
+     * Las rutas persistidas tienen costo positivo, así que nunca forman un ciclo negativo.
+     * Los tres parámetros de simulación (todos o ninguno) agregan una ruta dirigida
+     * origen -> destino solo en la matriz en memoria, para probar la detección.
+     */
+    public FloydWarshallResponseDTO todosContraTodos(String simularOrigen, String simularDestino, Double simularCosto) {
+        boolean hayOrigen = simularOrigen != null && !simularOrigen.isBlank();
+        boolean hayDestino = simularDestino != null && !simularDestino.isBlank();
+        boolean simular = hayOrigen || hayDestino || simularCosto != null;
+        if (simular && !(hayOrigen && hayDestino && simularCosto != null)) {
+            throw new IllegalArgumentException(
+                    "Para simular una ruta se necesitan 'simularOrigen', 'simularDestino' y 'simularCosto'");
+        }
+        if (simular && !Double.isFinite(simularCosto)) {
+            throw new IllegalArgumentException("'simularCosto' debe ser un número finito");
+        }
+
+        Grafo grafo = cargarGrafo();
+        int v = grafo.cantidadVertices();
+        double[][] pesos = FloydWarshall.matrizDeAdyacencia(grafo);
+
+        FloydWarshallResponseDTO.RutaSimuladaDTO rutaSimulada = null;
+        if (simular) {
+            String origenId = simularOrigen.trim();
+            String destinoId = simularDestino.trim();
+            if (!grafo.contiene(origenId)) {
+                throw new EstacionNoEncontradaException(origenId);
+            }
+            if (!grafo.contiene(destinoId)) {
+                throw new EstacionNoEncontradaException(destinoId);
+            }
+            if (origenId.equals(destinoId)) {
+                throw new IllegalArgumentException("La ruta simulada debe unir dos estaciones distintas");
+            }
+            pesos[grafo.indiceDe(origenId)][grafo.indiceDe(destinoId)] = simularCosto;
+            rutaSimulada = new FloydWarshallResponseDTO.RutaSimuladaDTO(origenId, destinoId, simularCosto);
+        }
+
+        FloydWarshall.ResultadoFloyd resultado = floydWarshall.resolver(pesos);
+
+        List<GrafoDTO.EstacionDTO> estaciones = new ArrayList<>();
+        for (int i = 0; i < v; i++) {
+            estaciones.add(new GrafoDTO.EstacionDTO(grafo.idDe(i), grafo.nombreDe(i)));
+        }
+
+        // Con ciclo negativo las distancias no tienen sentido (se pueden bajar sin límite): no se devuelven.
+        Double[][] distancias = null;
+        if (!resultado.cicloNegativo()) {
+            distancias = new Double[v][v];
+            for (int i = 0; i < v; i++) {
+                for (int j = 0; j < v; j++) {
+                    double d = resultado.distancias()[i][j];
+                    distancias[i][j] = d == FloydWarshall.INF ? null : d;
+                }
+            }
+        }
+
+        List<String> enCiclo = resultado.verticesEnCicloNegativo().stream().map(grafo::idDe).toList();
+        String alerta = resultado.cicloNegativo()
+                ? "Anomalía gravitacional: ciclo de costo negativo que afecta a " + String.join(", ", enCiclo)
+                        + ". Las distancias mínimas no están definidas."
+                : null;
+
+        // Dijkstra no admite pesos negativos: la comparativa se mide sobre el grafo persistido.
+        long nodosExpandidos = 0;
+        long aristasExaminadas = 0;
+        for (int origen = 0; origen < v; origen++) {
+            CaminosMinimos.ResultadoDesdeOrigen desdeOrigen = caminosMinimos.dijkstraDesde(grafo, origen);
+            nodosExpandidos += desdeOrigen.nodosExpandidos();
+            aristasExaminadas += desdeOrigen.aristasExaminadas();
+        }
+
+        return new FloydWarshallResponseDTO(
+                "Floyd-Warshall (Programación Dinámica)",
+                "Celdas de Antimateria (CA)",
+                estaciones,
+                distancias,
+                resultado.cicloNegativo(),
+                enCiclo,
+                alerta,
+                rutaSimulada,
+                new FloydWarshallResponseDTO.ComparativaDTO(
+                        v,
+                        grafo.cantidadAristas(),
+                        resultado.estadosExpandidos(),
+                        nodosExpandidos + aristasExaminadas,
+                        nodosExpandidos,
+                        aristasExaminadas
+                )
         );
     }
 }

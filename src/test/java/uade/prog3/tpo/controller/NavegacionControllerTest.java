@@ -9,6 +9,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import uade.prog3.tpo.dto.DijkstraResponseDTO;
+import uade.prog3.tpo.dto.FloydWarshallResponseDTO;
+import uade.prog3.tpo.dto.GrafoDTO;
 import uade.prog3.tpo.dto.MstResponseDTO;
 import uade.prog3.tpo.dto.MstResponseDTO.AristaMstDTO;
 import uade.prog3.tpo.exception.EstacionNoEncontradaException;
@@ -109,6 +111,73 @@ class NavegacionControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value(400))
                 .andExpect(jsonPath("$.mensaje").isNotEmpty())
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("GET /api/navegacion/todos-contra-todos responde 200 OK con la matriz y la comparativa")
+    void todosContraTodosResponde200Ok() throws Exception {
+        FloydWarshallResponseDTO mockDto = new FloydWarshallResponseDTO(
+                "Floyd-Warshall (Programación Dinámica)",
+                "Celdas de Antimateria (CA)",
+                List.of(new GrafoDTO.EstacionDTO("ALPHA", "Alpha Centauri"), new GrafoDTO.EstacionDTO("SOL", "Base Solar")),
+                new Double[][]{{0.0, 12.0}, {12.0, null}},
+                false,
+                List.of(),
+                null,
+                null,
+                new FloydWarshallResponseDTO.ComparativaDTO(8, 12, 512, 256, 64, 192)
+        );
+
+        when(grafoService.todosContraTodos(null, null, null)).thenReturn(mockDto);
+
+        mvc.perform(get("/api/navegacion/todos-contra-todos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estaciones[1].id").value("SOL"))
+                .andExpect(jsonPath("$.distancias[0][1]").value(12.0))
+                .andExpect(jsonPath("$.distancias[1][1]").isEmpty())
+                .andExpect(jsonPath("$.cicloNegativo").value(false))
+                .andExpect(jsonPath("$.comparativa.estadosFloydWarshall").value(512))
+                .andExpect(jsonPath("$.comparativa.estadosDijkstraVVeces").value(256));
+    }
+
+    @Test
+    @DisplayName("GET /api/navegacion/todos-contra-todos pasa la ruta simulada y devuelve la alerta de ciclo negativo")
+    void todosContraTodosConRutaSimulada() throws Exception {
+        FloydWarshallResponseDTO mockDto = new FloydWarshallResponseDTO(
+                "Floyd-Warshall (Programación Dinámica)",
+                "Celdas de Antimateria (CA)",
+                List.of(new GrafoDTO.EstacionDTO("NOVA", "Puesto Nova"), new GrafoDTO.EstacionDTO("ORION", "Nebulosa Orion")),
+                null,
+                true,
+                List.of("NOVA", "ORION"),
+                "Anomalía gravitacional",
+                new FloydWarshallResponseDTO.RutaSimuladaDTO("NOVA", "ORION", -30),
+                new FloydWarshallResponseDTO.ComparativaDTO(8, 12, 512, 256, 64, 192)
+        );
+
+        when(grafoService.todosContraTodos("NOVA", "ORION", -30.0)).thenReturn(mockDto);
+
+        mvc.perform(get("/api/navegacion/todos-contra-todos")
+                        .param("simularOrigen", "NOVA")
+                        .param("simularDestino", "ORION")
+                        .param("simularCosto", "-30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cicloNegativo").value(true))
+                .andExpect(jsonPath("$.distancias").isEmpty())
+                .andExpect(jsonPath("$.estacionesEnCicloNegativo[0]").value("NOVA"))
+                .andExpect(jsonPath("$.rutaSimulada.costoCA").value(-30.0));
+    }
+
+    @Test
+    @DisplayName("GET /api/navegacion/todos-contra-todos responde 400 si simularCosto no es un número")
+    void todosContraTodosCostoInvalidoRetorna400() throws Exception {
+        mvc.perform(get("/api/navegacion/todos-contra-todos")
+                        .param("simularOrigen", "NOVA")
+                        .param("simularDestino", "ORION")
+                        .param("simularCosto", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value(400))
                 .andExpect(jsonPath("$.trace").doesNotExist());
     }
 }
