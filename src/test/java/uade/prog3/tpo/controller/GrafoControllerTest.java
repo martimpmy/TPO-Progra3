@@ -95,4 +95,26 @@ class GrafoControllerTest {
                 .andExpect(jsonPath("$.codigo").value(503))
                 .andExpect(jsonPath("$.trace").doesNotExist());
     }
+
+    @Test
+    void rutasSegurasAliasResponde200() throws Exception {
+        uade.prog3.tpo.dto.RutasSegurasResponseDTO mockDto = new uade.prog3.tpo.dto.RutasSegurasResponseDTO(
+                "Base Solar",
+                "Ciudadela Omega",
+                70,
+                5,
+                List.of(),
+                new uade.prog3.tpo.dto.RutasSegurasResponseDTO.MetricasExploracionDTO(10, 50, 5, "80.0%", 80.0)
+        );
+        when(grafoService.rutasSeguras("SOL", "CITADEL", 70, 5)).thenReturn(mockDto);
+
+        mvc.perform(get("/api/grafo/rutas-seguras")
+                        .param("origen", "SOL")
+                        .param("destino", "CITADEL")
+                        .param("maxCosto", "70")
+                        .param("maxSaltos", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.origen").value("Base Solar"));
+    }
 }
+

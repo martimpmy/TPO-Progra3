@@ -27,7 +27,8 @@
       <button class="pestania" role="tab" id="tab-rutas" aria-controls="panel-rutas" aria-selected="false" tabindex="-1">Salto Hiperespacial y MST</button>
       <button class="pestania" role="tab" id="tab-optima" aria-controls="panel-optima" aria-selected="false" tabindex="-1">Carga óptima</button>
       <button class="pestania" role="tab" id="tab-telemetria" aria-controls="panel-telemetria" aria-selected="false" tabindex="-1">Telemetría</button>
-      <span class="pestania pestania--proxima" title="Hito 8 en adelante">Hito 8 en adelante · próximamente</span>
+      <button class="pestania" role="tab" id="tab-seguras" aria-controls="panel-seguras" aria-selected="false" tabindex="-1">Rutas seguras</button>
+      <span class="pestania pestania--proxima" title="Hito 9 en adelante">Hito 9 en adelante · próximamente</span>
     </nav>
 
     <!-- ============ MAPA ESTELAR (BFS / DFS) ============ -->
@@ -408,9 +409,96 @@
         </div>
       </div>
     </section>
+
+    <!-- ============ RUTAS SEGURAS (HITO 8: Backtracking con doble poda) ============ -->
+    <section id="panel-seguras" class="panel" role="tabpanel" aria-labelledby="tab-seguras" hidden>
+      <div class="grilla grilla--mapa">
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Exploración de Rutas Seguras</h2>
+            <span class="chip chip--violeta">Hito 8 · Backtracking</span>
+          </div>
+
+          <form id="formRutasSeguras">
+            <div class="fila-formulario">
+              <label class="campo">
+                <span>Estación de Partida</span>
+                <select id="segurasOrigen" required></select>
+              </label>
+              <label class="campo">
+                <span>Estación de Destino</span>
+                <select id="segurasDestino" required></select>
+              </label>
+            </div>
+
+            <div class="fila-formulario">
+              <label class="campo">
+                <span>Consumo Máximo (CA)</span>
+                <input id="segurasMaxCosto" type="number" min="0" step="1" value="70" required>
+              </label>
+              <label class="campo">
+                <span>Saltos Máximos</span>
+                <input id="segurasMaxSaltos" type="number" min="0" step="1" value="5" required>
+              </label>
+            </div>
+
+            <button id="btnBuscarSeguras" class="boton boton--primario" type="submit">Buscar rutas con poda</button>
+          </form>
+
+          <div id="segurasResultado" style="margin-top: 16px;" hidden>
+            <div class="metricas metricas--cuatro">
+              <div class="metrica">
+                <span class="metrica__valor" id="segurasPodaEfectiva">—</span>
+                <span class="metrica__nombre">Efectividad de Poda</span>
+              </div>
+              <div class="metrica">
+                <span class="metrica__valor" id="segurasNodosConPoda">—</span>
+                <span class="metrica__nombre">Nodos con Poda</span>
+              </div>
+              <div class="metrica">
+                <span class="metrica__valor" id="segurasNodosSinPoda">—</span>
+                <span class="metrica__nombre">Nodos sin Poda</span>
+              </div>
+              <div class="metrica">
+                <span class="metrica__valor" id="segurasRamasPodadas">—</span>
+                <span class="metrica__nombre">Ramas Podadas</span>
+              </div>
+            </div>
+
+            <h3 style="margin-top: 16px;">Rutas simples válidas (<span id="segurasCantidadRutas">0</span>):</h3>
+            <div id="segurasListaRutas" style="margin-top: 8px;"></div>
+          </div>
+          <p id="segurasVacio" class="vacio">Configurá las cotas y ejecutá la exploración para encontrar rutas simples y analizar la reducción del árbol.</p>
+        </div>
+
+        <div class="tarjeta">
+          <div class="tarjeta__titulo">
+            <h2>Teoría de Poda (Branch Pruning)</h2>
+          </div>
+          <div class="nota">
+            <strong>Búsqueda exhaustiva acotada.</strong>
+            El algoritmo genera el árbol de exploración de caminos simples (sin ciclos) desde el origen hasta el destino.
+            Al ser los pesos de salto estrictamente positivos (<code>CA &gt; 0</code>) y sumar 1 por cada salto,
+            ambas funciones acumuladas son <strong>estrictamente monótonas crecientes</strong>.
+          </div>
+          <div class="nota" style="margin-top: 12px;">
+            <strong>Corte anticipado:</strong> Si en cualquier estación intermedia
+            <code>costoActual + peso &gt; maxCosto</code> o <code>saltosActuales + 1 &gt; maxSaltos</code>,
+            se interrumpe la rama de inmediato sin descender a evaluar ninguno de sus hijos.
+          </div>
+          <div class="nota" style="margin-top: 12px;">
+            <strong>Reducción del espacio de estados:</strong>
+            Sin poda, explorar caminos simples en un grafo no dirigido alcanza complejidad factorial <code>O(V!)</code>.
+            Al activar la doble poda con cotas restrictivas, el espacio explorado se reduce significativamente
+            (demostrado en las métricas de comparación en tiempo real).
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div id="avisos" class="avisos" aria-live="assertive"></div>
-  <script src="/js/app.js?v=4"></script>
+  <script src="/js/app.js?v=5"></script>
 </body>
 </html>
+

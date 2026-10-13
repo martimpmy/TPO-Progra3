@@ -474,3 +474,104 @@ adyacencia suma O(V² + E) y la revisión de la diagonal O(V).
 **Espacio:** O(V²) — una única matriz, que se actualiza en el lugar.
 **Estructura usada:** matriz de adyacencia `double[V][V]` con `Double.POSITIVE_INFINITY` como "sin ruta".
 El grafo se lee de Neo4j en **una sola consulta** y el algoritmo trabaja únicamente en memoria.
+
+---
+
+### GET /api/navegacion/rutas-seguras  (Hito 8)
+
+Exploración de **rutas simples** (sin ciclos) entre una estación de origen y una de destino mediante **Backtracking con Doble Poda** (restricción simultánea de consumo en CA y de saltos hiperespaciales).
+
+Instrumenta contadores para comparar los **nodos explorados con poda versus sin poda** y reportar el porcentaje real de reducción del espacio de estados (`podaEfectiva`).
+
+**Parámetros de Consulta (Query Params):**
+- `origen`: id de la estación inicial (ej. `SOL`).
+- `destino`: id de la estación final (ej. `CITADEL`).
+- `maxCosto`: entero $\ge 0$, cota superior de consumo energético en Celdas de Antimateria (CA).
+- `maxSaltos`: entero $\ge 0$, cota superior de saltos hiperespaciales (cantidad de tramos).
+
+**Ejemplo:** `GET /api/navegacion/rutas-seguras?origen=SOL&destino=CITADEL&maxCosto=70&maxSaltos=5`
+
+**Respuesta (200 OK):**
+```json
+{
+  "origen": "Base Solar",
+  "destino": "Ciudadela Omega",
+  "maxCosto": 70,
+  "maxSaltos": 5,
+  "rutasValidas": [
+    {
+      "camino": ["Base Solar", "Alpha Centauri", "Puerto Sirio", "Colonia Kepler", "Puesto Nova", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "ALPHA", "SIRIUS", "KEPLER", "NOVA", "CITADEL"],
+      "costoTotal": 56,
+      "saltos": 5
+    },
+    {
+      "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Puesto Nova", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "ALPHA", "VEGA", "KEPLER", "NOVA", "CITADEL"],
+      "costoTotal": 61,
+      "saltos": 5
+    },
+    {
+      "camino": ["Base Solar", "Puerto Sirio", "Colonia Kepler", "Puesto Nova", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "SIRIUS", "KEPLER", "NOVA", "CITADEL"],
+      "costoTotal": 61,
+      "saltos": 4
+    },
+    {
+      "camino": ["Base Solar", "Alpha Centauri", "Puerto Sirio", "Colonia Kepler", "Nebulosa Orion", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "ALPHA", "SIRIUS", "KEPLER", "ORION", "CITADEL"],
+      "costoTotal": 63,
+      "saltos": 5
+    },
+    {
+      "camino": ["Base Solar", "Puerto Sirio", "Colonia Kepler", "Nebulosa Orion", "Puesto Nova", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "SIRIUS", "KEPLER", "ORION", "NOVA", "CITADEL"],
+      "costoTotal": 67,
+      "saltos": 5
+    },
+    {
+      "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Nebulosa Orion", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "ALPHA", "VEGA", "KEPLER", "ORION", "CITADEL"],
+      "costoTotal": 68,
+      "saltos": 5
+    },
+    {
+      "camino": ["Base Solar", "Puerto Sirio", "Colonia Kepler", "Nebulosa Orion", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "SIRIUS", "KEPLER", "ORION", "CITADEL"],
+      "costoTotal": 68,
+      "saltos": 4
+    },
+    {
+      "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Nebulosa Orion", "Puesto Nova", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "ALPHA", "VEGA", "ORION", "NOVA", "CITADEL"],
+      "costoTotal": 70,
+      "saltos": 5
+    }
+  ],
+  "metricasExploracion": {
+    "nodosExploradosConPoda": 41,
+    "nodosExploradosSinPoda": 79,
+    "ramasPodadas": 15,
+    "podaEfectiva": "48.1%",
+    "porcentajePoda": 48.1
+  }
+}
+```
+
+**Errores:**
+- `400 Bad Request` si falta algún parámetro obligatorio, o si `maxCosto < 0` o `maxSaltos < 0`.
+- `404 Not Found` si `origen` o `destino` no existen en la red de estaciones.
+
+**Fundamentación de la Poda y Monotonía:**
+Dado que los pesos de las rutas son estrictamente positivos ($CA > 0$) y cada salto suma $+1$, las funciones acumuladas de costo y saltos son **estrictamente monótonas crecientes**:
+$$\text{costo}(P \cdot (u, v)) = \text{costo}(P) + w(u, v) > \text{costo}(P)$$
+$$\text{saltos}(P \cdot (u, v)) = \text{saltos}(P) + 1 > \text{saltos}(P)$$
+Si en un vértice intermedio $\text{costoActual} + w(u, v) > C_{\max}$ o $\text{saltosActuales} + 1 > K_{\max}$, es matemáticamente imposible que cualquier descendiente vuelva a satisfacer las cotas. La rama se poda inmediatamente sin evaluar ningún camino derivado.
+
+**Complejidad:**
+- *Temporal (Peor Caso):* $O(V!)$ en un grafo completo sin poda (permutaciones de caminos simples). Con cotas estrictas, el espacio efectivo explorado se reduce a una fracción mínima del árbol (ej. $> 70\%$ de poda con cotas cercanas al óptimo).
+- *Espacio Auxiliar:* $O(V)$ por la pila de llamadas de recursión (profundidad máxima $V$) y el arreglo booleano de estaciones visitadas `visitado[]`.
+
+**Compatibilidad con Scaffold:**
+- `GET /api/grafo/rutas-seguras?origen=SOL&destino=CITADEL&maxCosto=70&maxSaltos=5`
+

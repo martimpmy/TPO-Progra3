@@ -288,4 +288,67 @@ public class GrafoService {
                 )
         );
     }
+
+    private final uade.prog3.tpo.algorithm.RutasSegurasBacktracking rutasSegurasBacktracking =
+            new uade.prog3.tpo.algorithm.RutasSegurasBacktracking();
+
+    /**
+     * Hito 8: Backtracking con poda de rutas seguras bajo doble restricción (costo y saltos).
+     */
+    public uade.prog3.tpo.dto.RutasSegurasResponseDTO rutasSeguras(String origen, String destino, int maxCosto, int maxSaltos) {
+        if (origen == null || origen.isBlank()) {
+            throw new IllegalArgumentException("Falta el parámetro obligatorio 'origen'");
+        }
+        if (destino == null || destino.isBlank()) {
+            throw new IllegalArgumentException("Falta el parámetro obligatorio 'destino'");
+        }
+        if (maxCosto < 0) {
+            throw new IllegalArgumentException("El costo máximo no puede ser negativo: " + maxCosto);
+        }
+        if (maxSaltos < 0) {
+            throw new IllegalArgumentException("La cantidad máxima de saltos no puede ser negativa: " + maxSaltos);
+        }
+
+        String origenId = origen.trim();
+        String destinoId = destino.trim();
+
+        Grafo grafo = cargarGrafo();
+        if (!grafo.contiene(origenId)) {
+            throw new EstacionNoEncontradaException(origenId);
+        }
+        if (!grafo.contiene(destinoId)) {
+            throw new EstacionNoEncontradaException(destinoId);
+        }
+
+        uade.prog3.tpo.algorithm.RutasSegurasBacktracking.ResultadoBacktracking res =
+                rutasSegurasBacktracking.buscarRutas(grafo, origenId, destinoId, maxCosto, maxSaltos);
+
+        List<uade.prog3.tpo.dto.RutasSegurasResponseDTO.RutaValidaDTO> rutasDTO = res.rutasValidas().stream()
+                .map(r -> new uade.prog3.tpo.dto.RutasSegurasResponseDTO.RutaValidaDTO(
+                        r.caminoNombres(),
+                        r.caminoIds(),
+                        r.costoTotal(),
+                        r.saltos()
+                ))
+                .toList();
+
+        uade.prog3.tpo.dto.RutasSegurasResponseDTO.MetricasExploracionDTO metricasDTO =
+                new uade.prog3.tpo.dto.RutasSegurasResponseDTO.MetricasExploracionDTO(
+                        res.metricas().nodosExploradosConPoda(),
+                        res.metricas().nodosExploradosSinPoda(),
+                        res.metricas().ramasPodadas(),
+                        res.metricas().podaEfectiva(),
+                        res.metricas().porcentajePoda()
+                );
+
+        return new uade.prog3.tpo.dto.RutasSegurasResponseDTO(
+                res.origenNombre(),
+                res.destinoNombre(),
+                res.maxCosto(),
+                res.maxSaltos(),
+                rutasDTO,
+                metricasDTO
+        );
+    }
 }
+

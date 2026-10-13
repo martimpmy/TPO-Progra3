@@ -255,4 +255,26 @@ class GrafoServiceTest {
         assertThatThrownBy(() -> service.todosContraTodos("PLUTON", "ORION", -1.0))
                 .isInstanceOf(EstacionNoEncontradaException.class);
     }
+
+    @Test
+    @DisplayName("rutasSeguras: encuentra rutas simples bajo costo y saltos máximos con reporte de poda")
+    void rutasSegurasService() {
+        when(grafoRepo.leerGrafo()).thenReturn(filasDelDominio());
+
+        uade.prog3.tpo.dto.RutasSegurasResponseDTO r = service.rutasSeguras("SOL", "CITADEL", 70, 5);
+
+        assertThat(r.rutasValidas()).hasSize(8);
+        assertThat(r.rutasValidas().get(0).costoTotal()).isEqualTo(56);
+        assertThat(r.rutasValidas().get(0).saltos()).isEqualTo(5);
+        assertThat(r.metricasExploracion().nodosExploradosConPoda())
+                .isLessThan(r.metricasExploracion().nodosExploradosSinPoda());
+        assertThat(r.metricasExploracion().ramasPodadas()).isPositive();
+        assertThat(r.metricasExploracion().porcentajePoda()).isPositive();
+
+        assertThatThrownBy(() -> service.rutasSeguras("PLUTON", "CITADEL", 70, 5))
+                .isInstanceOf(EstacionNoEncontradaException.class);
+        assertThatThrownBy(() -> service.rutasSeguras("SOL", "CITADEL", -1, 5))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }
+

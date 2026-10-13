@@ -67,4 +67,20 @@ public class NavegacionController {
     ) {
         return grafoService.todosContraTodos(simularOrigen, simularDestino, simularCosto);
     }
+
+    /**
+     * Hito 8: Exploración de rutas simples con doble restricción (Backtracking con poda).
+     *
+     * GET /api/navegacion/rutas-seguras?origen=SOL&destino=CITADEL&maxCosto=70&maxSaltos=5
+     */
+    @GetMapping("/navegacion/rutas-seguras")
+    public uade.prog3.tpo.dto.RutasSegurasResponseDTO rutasSeguras(
+            @RequestParam String origen,
+            @RequestParam String destino,
+            @RequestParam int maxCosto,
+            @RequestParam int maxSaltos
+    ) {
+        return grafoService.rutasSeguras(origen, destino, maxCosto, maxSaltos);
+    }
 }
+

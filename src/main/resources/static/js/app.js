@@ -215,6 +215,19 @@ async function cargarMapa() {
     }
     if (estaciones.some((e) => e.id === "NOVA")) $("simOrigen").value = "NOVA";
     if (estaciones.some((e) => e.id === "ORION")) $("simDestino").value = "ORION";
+
+    for (const id of ["segurasOrigen", "segurasDestino"]) {
+        const el = $(id);
+        if (el) {
+            el.replaceChildren(...estaciones.map((e) => {
+                const opcion = crear("option", null, `${e.nombre} (${e.id})`);
+                opcion.value = e.id;
+                return opcion;
+            }));
+        }
+    }
+    if (estaciones.some((e) => e.id === "SOL") && $("segurasOrigen")) $("segurasOrigen").value = "SOL";
+    if (estaciones.some((e) => e.id === "CITADEL") && $("segurasDestino")) $("segurasDestino").value = "CITADEL";
 }
 
 function nodoDe(id) {
@@ -737,7 +750,72 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    if ($("formRutasSeguras")) {
+        $("formRutasSeguras").addEventListener("submit", buscarRutasSeguras);
+    }
+
     mostrarTeoriaRecorrido();
     mostrarTeoriaOrden();
     cargarTodo();
 });
+
+/* ============================ Hito 8: Rutas Seguras (Backtracking con doble poda) ============ */
+
+async function buscarRutasSeguras(evento) {
+    evento.preventDefault();
+    const origen = $("segurasOrigen").value;
+    const destino = $("segurasDestino").value;
+    const maxCosto = parseInt($("segurasMaxCosto").value, 10);
+    const maxSaltos = parseInt($("segurasMaxSaltos").value, 10);
+
+    if (!origen || !destino) {
+        avisar("Seleccioná las estaciones de origen y destino.");
+        return;
+    }
+    if (isNaN(maxCosto) || maxCosto < 0) {
+        avisar("El costo máximo debe ser un entero mayor o igual a 0.");
+        return;
+    }
+    if (isNaN(maxSaltos) || maxSaltos < 0) {
+        avisar("La cantidad máxima de saltos debe ser un entero mayor o igual a 0.");
+        return;
+    }
+
+    let r;
+    try {
+        r = await conBotonOcupado($("btnBuscarSeguras"), "Explorando árbol de estados…",
+            () => api(`/api/navegacion/rutas-seguras?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}&maxCosto=${maxCosto}&maxSaltos=${maxSaltos}`));
+    } catch (e) {
+        avisar(e.message);
+        return;
+    }
+
+    $("segurasVacio").hidden = true;
+    $("segurasResultado").hidden = false;
+
+    $("segurasPodaEfectiva").textContent = r.metricasExploracion.podaEfectiva;
+    $("segurasNodosConPoda").textContent = numero(r.metricasExploracion.nodosExploradosConPoda);
+    $("segurasNodosSinPoda").textContent = numero(r.metricasExploracion.nodosExploradosSinPoda);
+    $("segurasRamasPodadas").textContent = numero(r.metricasExploracion.ramasPodadas);
+    $("segurasCantidadRutas").textContent = r.rutasValidas.length;
+
+    const lista = $("segurasListaRutas");
+    if (r.rutasValidas.length === 0) {
+        lista.replaceChildren(crear("p", "vacio", "No existen rutas que cumplan ambas restricciones de costo y saltos."));
+        return;
+    }
+
+    lista.replaceChildren(...r.rutasValidas.map((ruta, i) => {
+        const tarjeta = crear("div", "tarjeta-ruta");
+        const header = crear("div", "tarjeta-ruta__header");
+        header.append(
+            crear("strong", null, `Ruta #${i + 1}`),
+            crear("span", "chip chip--violeta", `${numero(ruta.costoTotal)} CA · ${ruta.saltos} ${ruta.saltos === 1 ? "salto" : "saltos"}`)
+        );
+        const caminoTexto = ruta.camino.join(" ➔ ");
+        const caminoDiv = crear("div", "tarjeta-ruta__camino", caminoTexto);
+        tarjeta.append(header, caminoDiv);
+        return tarjeta;
+    }));
+}
+

@@ -180,4 +180,59 @@ class NavegacionControllerTest {
                 .andExpect(jsonPath("$.codigo").value(400))
                 .andExpect(jsonPath("$.trace").doesNotExist());
     }
+
+    @Test
+    @DisplayName("GET /api/navegacion/rutas-seguras responde 200 OK con rutas y métricas de poda")
+    void rutasSegurasResponde200Ok() throws Exception {
+        uade.prog3.tpo.dto.RutasSegurasResponseDTO mockDto = new uade.prog3.tpo.dto.RutasSegurasResponseDTO(
+                "Base Solar",
+                "Ciudadela Omega",
+                70,
+                5,
+                List.of(new uade.prog3.tpo.dto.RutasSegurasResponseDTO.RutaValidaDTO(
+                        List.of("Base Solar", "Alpha Centauri", "Puerto Sirio", "Colonia Kepler", "Puesto Nova", "Ciudadela Omega"),
+                        List.of("SOL", "ALPHA", "SIRIUS", "KEPLER", "NOVA", "CITADEL"),
+                        56,
+                        5
+                )),
+                new uade.prog3.tpo.dto.RutasSegurasResponseDTO.MetricasExploracionDTO(
+                        22,
+                        79,
+                        15,
+                        "72.2%",
+                        72.15
+                )
+        );
+
+        when(grafoService.rutasSeguras("SOL", "CITADEL", 70, 5)).thenReturn(mockDto);
+
+        mvc.perform(get("/api/navegacion/rutas-seguras")
+                        .param("origen", "SOL")
+                        .param("destino", "CITADEL")
+                        .param("maxCosto", "70")
+                        .param("maxSaltos", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.origen").value("Base Solar"))
+                .andExpect(jsonPath("$.destino").value("Ciudadela Omega"))
+                .andExpect(jsonPath("$.maxCosto").value(70))
+                .andExpect(jsonPath("$.maxSaltos").value(5))
+                .andExpect(jsonPath("$.rutasValidas").isArray())
+                .andExpect(jsonPath("$.rutasValidas[0].costoTotal").value(56))
+                .andExpect(jsonPath("$.rutasValidas[0].saltos").value(5))
+                .andExpect(jsonPath("$.metricasExploracion.nodosExploradosConPoda").value(22))
+                .andExpect(jsonPath("$.metricasExploracion.nodosExploradosSinPoda").value(79))
+                .andExpect(jsonPath("$.metricasExploracion.podaEfectiva").value("72.2%"));
+    }
+
+    @Test
+    @DisplayName("GET /api/navegacion/rutas-seguras responde 400 si faltan parámetros requeridos")
+    void rutasSegurasParametrosFaltantesRetorna400() throws Exception {
+        mvc.perform(get("/api/navegacion/rutas-seguras")
+                        .param("origen", "SOL")
+                        .param("destino", "CITADEL"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value(400))
+                .andExpect(jsonPath("$.mensaje").isNotEmpty());
+    }
 }
+
