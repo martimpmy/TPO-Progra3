@@ -52,6 +52,56 @@ class RutasSegurasBacktrackingTest {
     }
 
     @Test
+    @DisplayName("Ejemplo del informe: métricas exactas (41 con poda, 79 sin poda, 19 ramas podadas, 48.1%)")
+    void metricasExactasDelEjemplo() {
+        RutasSegurasBacktracking.ResultadoBacktracking res =
+                backtracking.buscarRutas(grafo, "SOL", "CITADEL", 70, 5);
+
+        assertThat(res.metricas().nodosExploradosConPoda()).isEqualTo(41);
+        assertThat(res.metricas().nodosExploradosSinPoda()).isEqualTo(79);
+        assertThat(res.metricas().ramasPodadas()).isEqualTo(19);
+        assertThat(res.metricas().podaEfectiva()).isEqualTo("48.1%");
+    }
+
+    @Test
+    @DisplayName("Rutas ordenadas por costo y, a igual costo, por menos saltos (MergeSort propio)")
+    void rutasOrdenadasPorCostoYSaltos() {
+        List<RutasSegurasBacktracking.RutaValida> rutas =
+                backtracking.buscarRutas(grafo, "SOL", "CITADEL", 70, 5).rutasValidas();
+
+        assertThat(rutas).extracting(r -> r.costoTotal() + "/" + r.saltos())
+                .containsExactly("56/5", "61/4", "61/5", "63/5", "67/5", "68/4", "68/5", "70/5");
+    }
+
+    @Test
+    @DisplayName("Búsquedas simultáneas con la misma instancia no mezclan las métricas")
+    void busquedasSimultaneasNoMezclanMetricas() throws Exception {
+        // Una sola instancia compartida, como en GrafoService
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(8);
+        try {
+            List<java.util.concurrent.Future<RutasSegurasBacktracking.MetricasPoda>> futuros = new java.util.ArrayList<>();
+            for (int i = 0; i < 200; i++) {
+                boolean holgada = i % 2 == 0;
+                futuros.add(pool.submit(() -> backtracking.buscarRutas(
+                        grafo, "SOL", "CITADEL", holgada ? 999 : 70, holgada ? 10 : 5).metricas()));
+            }
+            for (int i = 0; i < futuros.size(); i++) {
+                RutasSegurasBacktracking.MetricasPoda m = futuros.get(i).get();
+                if (i % 2 == 0) {
+                    assertThat(m.nodosExploradosConPoda()).isEqualTo(79);
+                    assertThat(m.ramasPodadas()).isZero();
+                } else {
+                    assertThat(m.nodosExploradosConPoda()).isEqualTo(41);
+                    assertThat(m.ramasPodadas()).isEqualTo(19);
+                }
+                assertThat(m.nodosExploradosSinPoda()).isEqualTo(79);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
     @DisplayName("Cota ajustada (maxCosto=56, maxSaltos=5): encuentra solo la ruta óptima y demuestra poda efectiva")
     void cotaAjustadaSoloOptimo() {
         RutasSegurasBacktracking.ResultadoBacktracking res =

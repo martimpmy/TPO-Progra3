@@ -56,9 +56,17 @@ public class RutasSegurasBacktracking {
     ) {
     }
 
-    private int contadorConPoda;
-    private int contadorSinPoda;
-    private int ramasPodadas;
+    /**
+     * Contadores de UNA búsqueda. Se crean en cada llamada (no son atributos de la clase)
+     * porque el service comparte una única instancia entre pedidos simultáneos.
+     */
+    private static final class Contadores {
+        int conPoda = 1; // raíz (nodo origen)
+        int sinPoda = 1;
+        int ramasPodadas = 0;
+    }
+
+    private final Ordenamiento ordenamiento = new Ordenamiento();
 
     /**
      * Ejecuta la búsqueda de rutas seguras por Backtracking con poda y contrasta con la versión sin poda.
@@ -97,9 +105,9 @@ public class RutasSegurasBacktracking {
         int destinoIdx = grafo.indiceDe(destinoId);
         int v = grafo.cantidadVertices();
 
+        Contadores contadores = new Contadores();
+
         // 1. Exploración CON poda
-        contadorConPoda = 1; // raíz (nodo origen)
-        ramasPodadas = 0;
         List<RutaValida> rutas = new ArrayList<>();
         boolean[] visitadoConPoda = new boolean[v];
         List<Integer> caminoConPoda = new ArrayList<>();
@@ -110,31 +118,32 @@ public class RutasSegurasBacktracking {
         if (origenIdx == destinoIdx) {
             rutas.add(crearRuta(grafo, caminoConPoda, 0, 0));
         } else {
-            backtrackConPoda(grafo, origenIdx, destinoIdx, 0, 0, maxCosto, maxSaltos, visitadoConPoda, caminoConPoda, rutas);
+            backtrackConPoda(grafo, origenIdx, destinoIdx, 0, 0, maxCosto, maxSaltos, visitadoConPoda, caminoConPoda, rutas, contadores);
         }
 
-        // Ordenamos las rutas encontradas: primero por menor costo, luego por menor cantidad de saltos
-        rutas.sort(Comparator.comparingInt(RutaValida::costoTotal).thenComparingInt(RutaValida::saltos));
+        // Rutas de menor a mayor costo y, a igual costo, menos saltos primero.
+        // MergeSort propio (Hito 2): la cátedra no permite List.sort / Collections.sort.
+        List<RutaValida> rutasOrdenadas = ordenamiento.mergeSort(rutas,
+                Comparator.comparingInt(RutaValida::costoTotal).thenComparingInt(RutaValida::saltos));
 
         // 2. Exploración SIN poda (árbol completo de caminos simples)
-        contadorSinPoda = 1;
         boolean[] visitadoSinPoda = new boolean[v];
         visitadoSinPoda[origenIdx] = true;
 
         if (origenIdx != destinoIdx) {
-            backtrackSinPoda(grafo, origenIdx, destinoIdx, visitadoSinPoda);
+            backtrackSinPoda(grafo, origenIdx, destinoIdx, visitadoSinPoda, contadores);
         }
 
         // Cálculo de efectividad de la poda
-        double porcentaje = contadorSinPoda > 0
-                ? Math.max(0.0, ((double) (contadorSinPoda - contadorConPoda) / contadorSinPoda) * 100.0)
+        double porcentaje = contadores.sinPoda > 0
+                ? Math.max(0.0, ((double) (contadores.sinPoda - contadores.conPoda) / contadores.sinPoda) * 100.0)
                 : 0.0;
         String podaEfectivaStr = String.format(Locale.US, "%.1f%%", porcentaje);
 
         MetricasPoda metricas = new MetricasPoda(
-                contadorConPoda,
-                contadorSinPoda,
-                ramasPodadas,
+                contadores.conPoda,
+                contadores.sinPoda,
+                contadores.ramasPodadas,
                 podaEfectivaStr,
                 porcentaje
         );
@@ -146,7 +155,7 @@ public class RutasSegurasBacktracking {
                 grafo.nombreDe(destinoIdx),
                 maxCosto,
                 maxSaltos,
-                Collections.unmodifiableList(rutas),
+                Collections.unmodifiableList(rutasOrdenadas),
                 metricas
         );
     }
@@ -161,7 +170,8 @@ public class RutasSegurasBacktracking {
             int maxSaltos,
             boolean[] visitado,
             List<Integer> camino,
-            List<RutaValida> rutas
+            List<RutaValida> rutas,
+            Contadores contadores
     ) {
         if (u == destino) {
             rutas.add(crearRuta(grafo, camino, costoActual, saltosActuales));
@@ -176,15 +186,15 @@ public class RutasSegurasBacktracking {
 
                 // Doble Cota de Poda (Consumo y Saltos)
                 if (nuevoCosto > maxCosto || nuevosSaltos > maxSaltos) {
-                    ramasPodadas++;
+                    contadores.ramasPodadas++;
                     continue; // Poda: no se desciende por este subárbol
                 }
 
-                contadorConPoda++;
+                contadores.conPoda++;
                 visitado[vecino] = true;
                 camino.add(vecino);
 
-                backtrackConPoda(grafo, vecino, destino, nuevoCosto, nuevosSaltos, maxCosto, maxSaltos, visitado, camino, rutas);
+                backtrackConPoda(grafo, vecino, destino, nuevoCosto, nuevosSaltos, maxCosto, maxSaltos, visitado, camino, rutas, contadores);
 
                 camino.remove(camino.size() - 1);
                 visitado[vecino] = false;
@@ -196,7 +206,8 @@ public class RutasSegurasBacktracking {
             Grafo grafo,
             int u,
             int destino,
-            boolean[] visitado
+            boolean[] visitado,
+            Contadores contadores
     ) {
         if (u == destino) {
             return;
@@ -205,10 +216,10 @@ public class RutasSegurasBacktracking {
         for (Grafo.Arista arista : grafo.vecinos(u)) {
             int vecino = arista.destino();
             if (!visitado[vecino]) {
-                contadorSinPoda++;
+                contadores.sinPoda++;
                 visitado[vecino] = true;
 
-                backtrackSinPoda(grafo, vecino, destino, visitado);
+                backtrackSinPoda(grafo, vecino, destino, visitado, contadores);
 
                 visitado[vecino] = false;
             }

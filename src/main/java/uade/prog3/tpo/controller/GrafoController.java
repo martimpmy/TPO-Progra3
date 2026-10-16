@@ -70,16 +70,5 @@ public class GrafoController {
     public uade.prog3.tpo.dto.MstResponseDTO kruskal() {
         return grafoService.mst("kruskal");
     }
-
-    /** Compatibilidad scaffold / alias: GET /api/grafo/rutas-seguras */
-    @GetMapping("/rutas-seguras")
-    public uade.prog3.tpo.dto.RutasSegurasResponseDTO rutasSeguras(
-            @RequestParam String origen,
-            @RequestParam String destino,
-            @RequestParam int maxCosto,
-            @RequestParam int maxSaltos
-    ) {
-        return grafoService.rutasSeguras(origen, destino, maxCosto, maxSaltos);
-    }
 }
 

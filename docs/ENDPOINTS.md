@@ -551,7 +551,7 @@ Instrumenta contadores para comparar los **nodos explorados con poda versus sin 
   "metricasExploracion": {
     "nodosExploradosConPoda": 41,
     "nodosExploradosSinPoda": 79,
-    "ramasPodadas": 15,
+    "ramasPodadas": 19,
     "podaEfectiva": "48.1%",
     "porcentajePoda": 48.1
   }
@@ -571,7 +571,4 @@ Si en un vértice intermedio $\text{costoActual} + w(u, v) > C_{\max}$ o $\text{
 **Complejidad:**
 - *Temporal (Peor Caso):* $O(V!)$ en un grafo completo sin poda (permutaciones de caminos simples). Con cotas estrictas, el espacio efectivo explorado se reduce a una fracción mínima del árbol (ej. $> 70\%$ de poda con cotas cercanas al óptimo).
 - *Espacio Auxiliar:* $O(V)$ por la pila de llamadas de recursión (profundidad máxima $V$) y el arreglo booleano de estaciones visitadas `visitado[]`.
-
-**Compatibilidad con Scaffold:**
-- `GET /api/grafo/rutas-seguras?origen=SOL&destino=CITADEL&maxCosto=70&maxSaltos=5`
 
