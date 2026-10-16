@@ -10,7 +10,7 @@ Combina la lista "Antes de entregar" del README original de la cátedra con las 
 |---|---|---|---|
 | 1 | `./mvnw test` pasa | ✅ | Toda la suite en verde, sin necesitar Neo4j (ver `docs/AUDITORIA-TESTS.md`) |
 | 2 | Ninguna contraseña en el código ni en `application.properties` | ✅ | Credenciales solo por variables de entorno o `.env`; `.env` está en `.gitignore` y no se versionó nunca |
-| 3 | Ninguna contraseña en el **historial de git** (informe, sección 4.3) | ❌ **Pendiente** | `spring.neo4j.authentication.password=***ELIMINADO***` en los commits `9a75614`, `b3ee7a7` y `c3c5850`. Ver "Limpiar el historial" |
+| 3 | Ninguna contraseña en el **historial de git** (informe, sección 4.3) | ✅ | La contraseña de Neo4j local que figuraba en `application.properties` en tres commits viejos se eliminó de todo el historial con `git filter-repo` (ver "Limpieza del historial") |
 | 4 | Cada algoritmo implementado tiene al menos un test | ✅ | Un `…Test` por clase de `algorithm/`; `Grafo` se prueba en `RecorridosTest` |
 | 5 | `docs/ENDPOINTS.md` documenta entrada y salida de cada endpoint | ✅ | Los 14 endpoints, con parámetros, ejemplo real, errores, complejidad y estructura usada |
 | 6 | El README explica el dominio y qué representa el costo | ✅ | Sección "Dominio galáctico": costo de una ruta = Celdas de Antimateria (CA) |
@@ -25,35 +25,17 @@ Reglas de diseño del informe, también verificadas:
 | El grafo se lee una sola vez por pedido | ✅ | `GrafoServiceTest` verifica una única llamada a `leerGrafo()` |
 | Errores sin stack trace | ✅ | `server.error.include-stacktrace=never` y `ManejadorDeErroresTest` |
 
-## Limpiar el historial (requisito 3)
+## Limpieza del historial (requisito 3)
 
-**Coordinarlo con el grupo antes**: reescribe todos los commits y cada integrante tiene que volver a clonar.
-Si `***ELIMINADO***` se usó en algún otro lado, cambiarla.
-
-```bash
-# 1. Herramienta
-pip install git-filter-repo
-
-# 2. Trabajar sobre un clon nuevo (filter-repo lo exige)
-git clone https://github.com/martimpmy/TPO-Progra3.git tpo-limpio
-cd tpo-limpio
-
-# 3. Reemplazar la contraseña en todo el historial
-echo '***ELIMINADO***==>***ELIMINADO***' > ../reemplazos.txt
-git filter-repo --replace-text ../reemplazos.txt
-git log --all -p | grep -c ***ELIMINADO***     # tiene que dar 0
-
-# 4. Publicar (sobrescribe GitHub)
-git remote add origin https://github.com/martimpmy/TPO-Progra3.git
-git push --force --all
-git push --force --tags
-```
-
-Después, cada integrante borra su copia local y vuelve a clonar.
+Tres commits del inicio del proyecto tenían en `application.properties` la contraseña de una base Neo4j local.
+Se reemplazó en **todo el historial** con [`git filter-repo`](https://github.com/newren/git-filter-repo)
+(`--replace-text`), se verificó que ya no aparece en ningún commit y se publicó con `git push --force`.
+Por eso cada integrante tuvo que volver a clonar el repositorio. Si esa contraseña se usaba en algún otro lado,
+conviene cambiarla.
 
 ## Tag y entrega
 
-Recién cuando los 6 requisitos estén en verde (y **después** de limpiar el historial, porque eso cambia los commits):
+Con los 6 requisitos en verde (el tag se crea **después** de limpiar el historial, porque la limpieza cambia los commits):
 
 ```bash
 ./mvnw test                                    # última verificación
