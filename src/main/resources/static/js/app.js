@@ -228,6 +228,17 @@ async function cargarMapa() {
     }
     if (estaciones.some((e) => e.id === "SOL") && $("segurasOrigen")) $("segurasOrigen").value = "SOL";
     if (estaciones.some((e) => e.id === "CITADEL") && $("segurasDestino")) $("segurasDestino").value = "CITADEL";
+
+    const repartoOrigen = $("repartoOrigen");
+    if (repartoOrigen) {
+        repartoOrigen.replaceChildren(...estaciones.map((e) => {
+            const opcion = crear("option", null, `${e.nombre} (${e.id})`);
+            opcion.value = e.id;
+            return opcion;
+        }));
+        if (estaciones.some((e) => e.id === "SOL")) repartoOrigen.value = "SOL";
+        dibujarOpcionesReparto(["ALPHA", "VEGA", "KEPLER"]);
+    }
 }
 
 function nodoDe(id) {
@@ -819,3 +830,74 @@ async function buscarRutasSeguras(evento) {
     }));
 }
 
+
+/* ============================ Hito 11: Reparto óptimo (Branch & Bound) ============================ */
+
+/** Una casilla por estación, salvo la base; conserva las que ya estaban marcadas. */
+function dibujarOpcionesReparto(marcadasPorDefecto) {
+    const contenedor = $("repartoEstaciones");
+    const base = $("repartoOrigen").value;
+    const marcadas = new Set(marcadasPorDefecto
+        || [...contenedor.querySelectorAll("input:checked")].map((c) => c.value));
+    contenedor.replaceChildren(...estado.grafo.estaciones
+        .filter((e) => e.id !== base)
+        .map((e) => {
+            const etiqueta = crear("label");
+            const casilla = crear("input");
+            casilla.type = "checkbox";
+            casilla.value = e.id;
+            casilla.checked = marcadas.has(e.id);
+            etiqueta.append(casilla, ` ${e.nombre}`);
+            return etiqueta;
+        }));
+}
+
+async function calcularReparto(evento) {
+    evento.preventDefault();
+    const origen = $("repartoOrigen").value;
+    const pedidas = [...$("repartoEstaciones").querySelectorAll("input:checked")].map((c) => c.value);
+    if (pedidas.length === 0) {
+        avisar("Elegí al menos una estación a visitar.");
+        return;
+    }
+
+    let r;
+    try {
+        r = await conBotonOcupado($("btnReparto"), "Ramificando y podando…",
+            () => enviarJson(`/api/logistica/reparto-optimo?origen=${encodeURIComponent(origen)}`, pedidas));
+    } catch (e) {
+        avisar(e.message);
+        return;
+    }
+
+    const m = r.metricas;
+    $("repartoVacio").hidden = true;
+    $("repartoResultado").hidden = false;
+    $("repartoCosto").textContent = numero(r.costoMinimoTotal);
+    $("repartoPoda").textContent = m.podaEfectiva;
+    $("repartoGenerados").textContent = numero(m.nodosGenerados);
+    $("repartoGeneradosTexto").textContent = `nodos generados de ${numero(m.nodosArbolCompleto)}`;
+    $("repartoDetalleMetricas").textContent =
+        `${numero(m.nodosExpandidos)} expandidos · ${numero(m.nodosArbolPodados)} podados por la cota · `
+        + `cota inferior inicial ${numero(m.cotaInferiorRaiz)} CA · primera solución (vecino más cercano) ${numero(m.cotaSuperiorInicial)} CA`;
+
+    $("repartoOrden").replaceChildren(...r.recorridoOptimo.map((nombre, i) => {
+        const li = crear("li");
+        li.append(crear("span", "recorrido__num", i + 1), crear("span", null, nombre));
+        return li;
+    }));
+    $("repartoTramos").replaceChildren(...r.tramos.map((t) => {
+        const li = crear("li");
+        li.append(crear("span", null, t.camino.join(" → ")), crear("span", null, `${numero(t.costo)} CA`));
+        return li;
+    }));
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (!$("formReparto")) return;
+    $("formReparto").addEventListener("submit", calcularReparto);
+    $("repartoOrigen").addEventListener("change", () => dibujarOpcionesReparto());
+    $("btnRepartoTodas").addEventListener("click", () => {
+        $("repartoEstaciones").querySelectorAll("input").forEach((c) => { c.checked = true; });
+    });
+});
