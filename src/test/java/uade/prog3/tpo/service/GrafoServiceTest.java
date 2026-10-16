@@ -276,5 +276,44 @@ class GrafoServiceTest {
         assertThatThrownBy(() -> service.rutasSeguras("SOL", "CITADEL", -1, 5))
                 .isInstanceOf(IllegalArgumentException.class);
     }
-}
 
+    @Test
+    @DisplayName("dijkstra: parámetros vacíos son 400 y estaciones inexistentes (origen o destino) son 404")
+    void dijkstraValidaciones() {
+        when(grafoRepo.leerGrafo()).thenReturn(filasDelDominio());
+
+        assertThatThrownBy(() -> service.dijkstra(" ", "CITADEL")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.dijkstra("SOL", null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.dijkstra("PLUTON", "CITADEL")).isInstanceOf(EstacionNoEncontradaException.class);
+        assertThatThrownBy(() -> service.dijkstra("SOL", "PLUTON")).isInstanceOf(EstacionNoEncontradaException.class);
+    }
+
+    @Test
+    @DisplayName("dijkstra: destino inalcanzable propaga IllegalStateException (la API responde 409)")
+    void dijkstraDestinoInalcanzable() {
+        List<FilaRuta> filas = new ArrayList<>(filasDelDominio());
+        filas.add(new FilaRuta("AISLADA", "Estación Aislada", null, null));
+        when(grafoRepo.leerGrafo()).thenReturn(filas);
+
+        assertThatThrownBy(() -> service.dijkstra("SOL", "AISLADA")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> service.mst("kruskal")).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("mst: método desconocido es 400 y se valida antes de leer la base")
+    void mstMetodoInvalido() {
+        assertThatThrownBy(() -> service.mst("boruvka")).isInstanceOf(IllegalArgumentException.class);
+        org.mockito.Mockito.verifyNoInteractions(grafoRepo);
+    }
+
+    @Test
+    @DisplayName("rutasSeguras: parámetros faltantes o negativos son 400 y destino inexistente es 404")
+    void rutasSegurasValidaciones() {
+        when(grafoRepo.leerGrafo()).thenReturn(filasDelDominio());
+
+        assertThatThrownBy(() -> service.rutasSeguras(null, "CITADEL", 70, 5)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.rutasSeguras("SOL", " ", 70, 5)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.rutasSeguras("SOL", "CITADEL", 70, -1)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.rutasSeguras("SOL", "PLUTON", 70, 5)).isInstanceOf(EstacionNoEncontradaException.class);
+    }
+}

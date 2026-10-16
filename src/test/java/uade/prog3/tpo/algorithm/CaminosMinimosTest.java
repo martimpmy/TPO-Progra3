@@ -91,4 +91,30 @@ class CaminosMinimosTest {
         assertThatThrownBy(() -> caminosMinimos.dijkstra(grafo, "SOL", "DESCONOCIDO"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("Parámetros nulos o vacíos lanzan IllegalArgumentException")
+    void parametrosInvalidos() {
+        CaminosMinimos cm = new CaminosMinimos();
+        Grafo g = GrafoDominio.crear();
+
+        assertThatThrownBy(() -> cm.dijkstra(null, "SOL", "CITADEL")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> cm.dijkstra(g, " ", "CITADEL")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> cm.dijkstra(g, "SOL", null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("El camino directo más caro no gana: SOL→SIRIUS cuesta 20 vía Alpha, no 25 directo")
+    void relajacionEligeElCaminoIndirecto() {
+        CaminosMinimos.ResultadoDijkstra r = new CaminosMinimos().dijkstra(GrafoDominio.crear(), "SOL", "SIRIUS");
+
+        assertThat(r.consumoTotal()).isEqualTo(20);
+        assertThat(r.caminoIds()).containsExactly("SOL", "ALPHA", "SIRIUS");
+    }
+
+    @Test
+    @DisplayName("Dijkstra es simétrico en este grafo no dirigido: CITADEL→SOL también cuesta 56")
+    void simetria() {
+        assertThat(new CaminosMinimos().dijkstra(GrafoDominio.crear(), "CITADEL", "SOL").consumoTotal()).isEqualTo(56);
+    }
 }

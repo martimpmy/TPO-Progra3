@@ -55,6 +55,15 @@ public class ManejadorDeErrores {
         return responder(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    /**
+     * El pedido es válido pero el grafo no permite resolverlo: destino inalcanzable (Dijkstra)
+     * o grafo no conexo (Prim/Kruskal). Los algoritmos lo señalan con IllegalStateException.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponseDTO> sinSolucionEnElGrafo(IllegalStateException e) {
+        return responder(HttpStatus.CONFLICT, e.getMessage());
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponseDTO> rutaInexistente(NoResourceFoundException e) {
         return responder(HttpStatus.NOT_FOUND, "No existe el recurso '/" + e.getResourcePath() + "'.");

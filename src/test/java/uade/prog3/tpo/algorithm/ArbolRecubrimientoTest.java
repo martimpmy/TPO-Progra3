@@ -98,4 +98,34 @@ class ArbolRecubrimientoTest {
         assertThat(resKruskal.costoTotal()).isZero();
         assertThat(resKruskal.aristas()).isEmpty();
     }
+
+    @Test
+    @DisplayName("Grafo vacío (V=0): Prim y Kruskal devuelven costo 0 sin aristas")
+    void grafoVacio() {
+        Grafo vacio = new Grafo();
+
+        assertThat(arbolRecubrimientoAuditoria.prim(vacio, null).aristas()).isEmpty();
+        assertThat(arbolRecubrimientoAuditoria.kruskal(vacio).costoTotal()).isZero();
+    }
+
+    @Test
+    @DisplayName("Prim con estación inicial inexistente o grafo nulo lanza IllegalArgumentException")
+    void primParametrosInvalidos() {
+        Grafo g = GrafoDominio.crear();
+
+        assertThatThrownBy(() -> arbolRecubrimientoAuditoria.prim(g, "PLUTON")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> arbolRecubrimientoAuditoria.prim(null, "SOL")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> arbolRecubrimientoAuditoria.kruskal(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Kruskal incluye Orion–Nova (11) y descarta Kepler–Nova (14): el MST del dominio cuesta 72, no 75")
+    void kruskalEligeOrionNova() {
+        var aristas = arbolRecubrimientoAuditoria.kruskal(GrafoDominio.crear()).aristas();
+
+        assertThat(aristas).extracting(a -> a.costo()).containsExactly(7, 8, 9, 10, 11, 12, 15);
+        assertThat(aristas).noneMatch(a -> a.costo() == 14);
+    }
+
+    private final ArbolRecubrimiento arbolRecubrimientoAuditoria = new ArbolRecubrimiento();
 }
