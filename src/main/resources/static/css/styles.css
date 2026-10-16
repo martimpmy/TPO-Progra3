@@ -238,3 +238,10 @@ select:disabled, input:disabled { opacity: 0.5; }
 .lista-chequeo__opciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; margin-bottom: 8px; }
 .lista-chequeo__opciones label { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer; }
 #panel-reparto .nota + .nota { margin-top: 12px; }
+
+/* ---------- Acceso al modo juego ---------- */
+.enlace-juego {
+  margin-left: auto; padding: 7px 14px; border-radius: 999px; text-decoration: none; font-size: 0.85rem; font-weight: 600;
+  color: #04222a; background: var(--cian); box-shadow: 0 0 14px rgba(56, 214, 238, 0.35);
+}
+.enlace-juego:hover { filter: brightness(1.08); }

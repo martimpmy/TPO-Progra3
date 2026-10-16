@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Odisea Galáctica — El juego</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+  <link rel="stylesheet" href="/css/juego.css?v=4">
+</head>
+<body>
+  <canvas id="estrellas" aria-hidden="true"></canvas>
+
+  <div class="app">
+    <header class="barra">
+      <button id="btnLogo" class="barra__logo" type="button" aria-label="Volver al mapa de niveles">
+        <span aria-hidden="true">🚀</span> Odisea Galáctica
+      </button>
+      <button id="btnSonido" class="icono" type="button" aria-pressed="true" aria-label="Música y sonido">🔊</button>
+      <div class="barra__total" aria-live="polite"><span aria-hidden="true">★</span> <span id="totalEstrellas">0</span><small id="totalMaximo"></small></div>
+      <a class="barra__consola" href="/">Consola técnica</a>
+    </header>
+
+    <!-- ================= MAPA DE NIVELES ================= -->
+    <section id="vistaMapa" class="vista">
+      <div class="portada">
+        <h1>Odisea<br>Galáctica</h1>
+        <p>Resolvé cada puzzle mejor que la computadora de a bordo.</p>
+      </div>
+      <p id="estadoCarga" class="estado-carga">Conectando con la base estelar…</p>
+      <div id="mundos" class="mundos"></div>
+    </section>
+
+    <!-- ================= NIVEL ================= -->
+    <section id="vistaNivel" class="vista" hidden>
+      <div class="nivel__barra">
+        <button id="btnVolver" class="icono" type="button" aria-label="Volver al mapa">←</button>
+        <div class="nivel__titulo">
+          <span id="nivelSector" class="nivel__sector"></span>
+          <h2 id="nivelNombre"></h2>
+        </div>
+        <button id="btnDeshacer" class="icono" type="button" aria-label="Deshacer">↶</button>
+        <button id="btnReiniciar" class="icono" type="button" aria-label="Reiniciar nivel">⟲</button>
+      </div>
+
+      <p id="nivelObjetivo" class="objetivo"></p>
+      <div id="indicadores" class="indicadores" aria-live="polite"></div>
+
+      <div class="escena">
+        <div id="escena" class="escena__contenido"></div>
+        <div class="burbuja" aria-live="polite">
+          <span class="burbuja__avatar" aria-hidden="true">🤖</span>
+          <p id="burbujaTexto"></p>
+        </div>
+      </div>
+
+      <div id="resultado" class="resultado" hidden>
+        <div class="resultado__tarjeta" role="dialog" aria-labelledby="resultadoTitulo">
+          <div id="resultadoEstrellas" class="resultado__estrellas"></div>
+          <h3 id="resultadoTitulo"></h3>
+          <p id="resultadoTexto"></p>
+          <div id="resultadoComparacion" class="resultado__comparacion"></div>
+          <div class="resultado__botones">
+            <button id="btnSolucion" class="boton boton--claro" type="button">Ver solución</button>
+            <button id="btnReintentar" class="boton boton--claro" type="button">Reintentar</button>
+            <button id="btnSiguiente" class="boton" type="button">Siguiente nivel</button>
+          </div>
+        </div>
+      </div>
+      <button id="btnOcultarSolucion" class="boton boton--flotante" type="button" hidden>Volver al resultado</button>
+    </section>
+  </div>
+
+  <div id="avisos" class="avisos" aria-live="assertive"></div>
+  <script src="/js/juego.js?v=3"></script>
+</body>
+</html>
