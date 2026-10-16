@@ -117,7 +117,12 @@ Tests (no necesitan la base de datos):
 ./mvnw test
 ```
 
+El mismo comando genera el informe de cobertura en `target/site/jacoco/index.html`.
+
 ## Documentación
 
 - [Catálogo de endpoints, con complejidades](docs/ENDPOINTS.md)
 - [Contraejemplo Greedy vs. Mochila 0/1, con la matriz DP paso a paso](docs/CONTRAEJEMPLO.md)
+- [Informe de complejidades asintóticas](docs/COMPLEJIDADES.md)
+- [Auditoría de tests y cobertura](docs/AUDITORIA-TESTS.md)
+- [Checklist de entrega](docs/CHECKLIST-ENTREGA.md)

@@ -21,6 +21,7 @@ Cada ruta no dirigida aparece una sola vez.
 **Errores:** `503` si no se puede conectar a Neo4j.
 
 **Complejidad:** O(V + E) — una consulta que lee todo el grafo y una pasada por la lista de adyacencia.
+**Estructura usada:** lista de adyacencia `Grafo` en memoria; cada ruta se emite una sola vez (índice u < v).
 
 ---
 
@@ -100,6 +101,9 @@ con la misma clave (ej. ratio 10.0) pueden salir en cualquier orden; MergeSort c
    - *Recurrencia:* $T(N) = 2T(N/2) + O(N)$.
    - *Complejidad temporal:* $O(N \log N)$ garantizada en el mejor, peor y promedio caso.
    - *Espacio auxiliar:* $O(N)$ para las sublistas de mezcla en memoria.
+
+**Estructura usada:** `ArrayList` copiada de la entrada (no se modifica la original). QuickSort particiona
+in-place sobre la copia con mediana de tres y partición de 3 vías; MergeSort divide en sublistas y las mezcla en una lista nueva.
 
 ---
 
@@ -328,7 +332,7 @@ Trayectoria: `SOL` (0) → `ALPHA` (+12=12) → `SIRIUS` (+8=20) → `KEPLER` (+
 **Errores Manejados:**
 - `400 Bad Request`: Si falta el parámetro `origen` o `destino`.
 - `404 Not Found`: Si alguna de las estaciones especificadas no existe en el grafo.
-- `500 Internal Server Error`: Si el grafo fuese disconexo y no existiera ruta transitable.
+- `409 Conflict`: si no existe ruta transitable entre las dos estaciones (grafo no conexo).
 
 **Justificación de Complejidad y Análisis Teórico:**
 - **Complejidad Temporal:** $O((V + E) \log V)$ sostenida mediante `PriorityQueue` (Min-Heap binario). Si se empleara búsqueda lineal en arreglo caería a $O(V^2)$, degradando la calificación según la rúbrica.
@@ -354,20 +358,21 @@ Diseña la **Red Troncal de Balizas Subespaciales** interconectando todas las es
   "costoTotalMST": 72,
   "unidad": "Celdas de Antimateria (CA)",
   "aristasSeleccionadas": [
-    { "origen": "Puesto Nova", "destino": "Ciudadela Omega", "costo": 7 },
+    { "origen": "Ciudadela Omega", "destino": "Puesto Nova", "costo": 7 },
     { "origen": "Alpha Centauri", "destino": "Puerto Sirio", "costo": 8 },
     { "origen": "Colonia Kepler", "destino": "Nebulosa Orion", "costo": 9 },
-    { "origen": "Minas de Vega", "destino": "Colonia Kepler", "costo": 10 },
+    { "origen": "Colonia Kepler", "destino": "Minas de Vega", "costo": 10 },
     { "origen": "Puesto Nova", "destino": "Nebulosa Orion", "costo": 11 },
-    { "origen": "Base Solar", "destino": "Alpha Centauri", "costo": 12 },
-    { "origen": "Puerto Sirio", "destino": "Colonia Kepler", "costo": 15 }
+    { "origen": "Alpha Centauri", "destino": "Base Solar", "costo": 12 },
+    { "origen": "Colonia Kepler", "destino": "Puerto Sirio", "costo": 15 }
   ]
 }
 ```
 
 **Verificación:** El MST conecta los 8 vértices mediante exactamente $V - 1 = 7$ aristas al menor costo acumulado global de **72 CA** ($7 + 8 + 9 + 10 + 11 + 12 + 15$). Ambos algoritmos (Prim y Kruskal) obtienen exactamente el mismo costo óptimo.
 
-**Errores:** `400 Bad Request` si el método especificado no es `prim` ni `kruskal`.
+**Errores:** `400 Bad Request` si el método especificado no es `prim` ni `kruskal`; `409 Conflict` si el grafo
+no es conexo y no existe un árbol que conecte todas las estaciones.
 
 **Justificación de Complejidad y Estructuras:**
 1. **Kruskal con Union-Find propio:**
@@ -377,12 +382,6 @@ Diseña la **Red Troncal de Balizas Subespaciales** interconectando todas las es
 2. **Prim con Cola de Prioridad:**
    - *Complejidad Temporal:* $O(E \log V)$ mediante `PriorityQueue` de aristas frontera.
    - *Espacio:* $O(V + E)$ en memoria auxiliar.
-
-**Compatibilidad con Scaffold:**
-- `GET /api/grafo/dijkstra?origen=SOL&destino=CITADEL`
-- `GET /api/grafo/mst?metodo=kruskal`
-- `GET /api/grafo/prim?origen=SOL`
-- `GET /api/grafo/kruskal`
 
 ---
 
@@ -506,16 +505,16 @@ Instrumenta contadores para comparar los **nodos explorados con poda versus sin 
       "saltos": 5
     },
     {
-      "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Puesto Nova", "Ciudadela Omega"],
-      "caminoIds": ["SOL", "ALPHA", "VEGA", "KEPLER", "NOVA", "CITADEL"],
-      "costoTotal": 61,
-      "saltos": 5
-    },
-    {
       "camino": ["Base Solar", "Puerto Sirio", "Colonia Kepler", "Puesto Nova", "Ciudadela Omega"],
       "caminoIds": ["SOL", "SIRIUS", "KEPLER", "NOVA", "CITADEL"],
       "costoTotal": 61,
       "saltos": 4
+    },
+    {
+      "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Puesto Nova", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "ALPHA", "VEGA", "KEPLER", "NOVA", "CITADEL"],
+      "costoTotal": 61,
+      "saltos": 5
     },
     {
       "camino": ["Base Solar", "Alpha Centauri", "Puerto Sirio", "Colonia Kepler", "Nebulosa Orion", "Ciudadela Omega"],
@@ -530,16 +529,16 @@ Instrumenta contadores para comparar los **nodos explorados con poda versus sin 
       "saltos": 5
     },
     {
-      "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Nebulosa Orion", "Ciudadela Omega"],
-      "caminoIds": ["SOL", "ALPHA", "VEGA", "KEPLER", "ORION", "CITADEL"],
-      "costoTotal": 68,
-      "saltos": 5
-    },
-    {
       "camino": ["Base Solar", "Puerto Sirio", "Colonia Kepler", "Nebulosa Orion", "Ciudadela Omega"],
       "caminoIds": ["SOL", "SIRIUS", "KEPLER", "ORION", "CITADEL"],
       "costoTotal": 68,
       "saltos": 4
+    },
+    {
+      "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Nebulosa Orion", "Ciudadela Omega"],
+      "caminoIds": ["SOL", "ALPHA", "VEGA", "KEPLER", "ORION", "CITADEL"],
+      "costoTotal": 68,
+      "saltos": 5
     },
     {
       "camino": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Nebulosa Orion", "Puesto Nova", "Ciudadela Omega"],
@@ -548,13 +547,7 @@ Instrumenta contadores para comparar los **nodos explorados con poda versus sin 
       "saltos": 5
     }
   ],
-  "metricasExploracion": {
-    "nodosExploradosConPoda": 41,
-    "nodosExploradosSinPoda": 79,
-    "ramasPodadas": 19,
-    "podaEfectiva": "48.1%",
-    "porcentajePoda": 48.1
-  }
+  "metricasExploracion": { "nodosExploradosConPoda": 41, "nodosExploradosSinPoda": 79, "ramasPodadas": 19, "podaEfectiva": "48.1%", "porcentajePoda": 48.10126582278481 }
 }
 ```
 
@@ -569,6 +562,87 @@ $$\text{saltos}(P \cdot (u, v)) = \text{saltos}(P) + 1 > \text{saltos}(P)$$
 Si en un vértice intermedio $\text{costoActual} + w(u, v) > C_{\max}$ o $\text{saltosActuales} + 1 > K_{\max}$, es matemáticamente imposible que cualquier descendiente vuelva a satisfacer las cotas. La rama se poda inmediatamente sin evaluar ningún camino derivado.
 
 **Complejidad:**
-- *Temporal (Peor Caso):* $O(V!)$ en un grafo completo sin poda (permutaciones de caminos simples). Con cotas estrictas, el espacio efectivo explorado se reduce a una fracción mínima del árbol (ej. $> 70\%$ de poda con cotas cercanas al óptimo).
+- *Temporal (Peor Caso):* $O(V!)$ en un grafo completo sin poda (permutaciones de caminos simples). Las cotas reducen el árbol explorado: en el ejemplo (70 CA, 5 saltos) se exploran 41 de 79 nodos (48,1 % de poda); con `maxCosto=56` sobrevive una sola ruta y se exploran 22 de 79 nodos (72,2 % de poda).
 - *Espacio Auxiliar:* $O(V)$ por la pila de llamadas de recursión (profundidad máxima $V$) y el arreglo booleano de estaciones visitadas `visitado[]`.
 
+**Estructura usada:** lista de adyacencia en memoria, arreglo `boolean[] visitado` (se marca al entrar y se desmarca al
+volver: eso es el retroceso), lista con el camino actual y la pila de llamadas recursivas. Las rutas válidas se ordenan
+por costo y saltos con el **MergeSort propio**.
+
+
+---
+
+### POST /api/logistica/reparto-optimo  (Hito 11)
+
+Ruta de reparto de **menor consumo** que sale de una estación base, visita una vez cada estación pedida y
+vuelve a la base, resuelta con **Ramificación y Poda (Branch & Bound)**.
+
+**Parámetros:** `origen` *(opcional, default `SOL`)*: estación base.
+
+**Cuerpo:** ids de las estaciones a aprovisionar. Se ignoran los repetidos y el propio origen.
+```json
+["ALPHA", "VEGA", "KEPLER"]
+```
+
+**Respuesta (200 OK):**
+```json
+{
+  "algoritmo": "Branch & Bound (Ramificación y Poda)",
+  "origen": "Base Solar",
+  "estacionesRequeridas": ["Alpha Centauri", "Minas de Vega", "Colonia Kepler"],
+  "recorridoOptimo": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Base Solar"],
+  "recorridoCompleto": ["Base Solar", "Alpha Centauri", "Minas de Vega", "Colonia Kepler", "Puerto Sirio", "Alpha Centauri", "Base Solar"],
+  "tramos": [
+    { "desde": "Base Solar", "hasta": "Alpha Centauri", "costo": 12, "camino": ["Base Solar", "Alpha Centauri"] },
+    { "desde": "Alpha Centauri", "hasta": "Minas de Vega", "costo": 18, "camino": ["Alpha Centauri", "Minas de Vega"] },
+    { "desde": "Minas de Vega", "hasta": "Colonia Kepler", "costo": 10, "camino": ["Minas de Vega", "Colonia Kepler"] },
+    {
+      "desde": "Colonia Kepler",
+      "hasta": "Base Solar",
+      "costo": 35,
+      "camino": ["Colonia Kepler", "Puerto Sirio", "Alpha Centauri", "Base Solar"]
+    }
+  ],
+  "costoMinimoTotal": 75,
+  "unidad": "Celdas de Antimateria (CA)",
+  "cotaUtilizada": "Costo acumulado + suma de la arista saliente mínima de cada estación no visitada (optimista/admisible)",
+  "metricas": {
+    "cotaInferiorRaiz": 32,
+    "cotaSuperiorInicial": 75,
+    "nodosGenerados": 16,
+    "nodosExpandidos": 10,
+    "nodosArbolPodados": 0,
+    "nodosArbolCompleto": 16,
+    "podaEfectiva": "0.0%"
+  }
+}
+```
+
+Dos estaciones pedidas pueden no estar conectadas directamente: el service calcula con **Dijkstra** el costo
+mínimo entre cada par de puntos y el Branch & Bound decide el orden de visita sobre esa matriz. En el ejemplo
+no existe ruta Kepler–Solar, así que la vuelta cuesta 35 CA pasando por Sirio y Alpha (`recorridoCompleto`
+muestra las estaciones intermedias). El óptimo es **75 CA**.
+
+Con 3 estaciones el árbol completo tiene solo 16 nodos y no hay nada que podar. La poda se ve con las
+**7 estaciones** (`["ALPHA","SIRIUS","VEGA","KEPLER","ORION","NOVA","CITADEL"]`): recorrido óptimo de **123 CA**,
+se generan **3.995 de 13.700** nodos (70,8 % de poda), 1.895 expandidos y 1.465 podados.
+
+**Errores:** `400` si la lista falta, está vacía, tiene ids vacíos o solo contiene el origen (o si se piden
+más de 12 estaciones); `404` si alguna estación no existe; `409` si alguna estación pedida es inalcanzable.
+
+**Cota inferior (optimista):**
+$$\text{cota}(nodo) = \text{costoAcumulado} + \sum_{v \in \text{noVisitados}} \min_{u \ne v} \text{costo}(v, u)$$
+Es **admisible**: lo que falta del recorrido sale exactamente una vez de cada estación no visitada (hacia otra
+estación o hacia la base), y cada salida cuesta al menos la mínima de esa estación. Por eso la cota nunca supera
+el costo real y podar con ella no pierde el óptimo. Se poda cuando `cota >= mejor costo encontrado`.
+La primera cota superior es el recorrido del **vecino más cercano**.
+
+**Métricas:** `nodosGenerados` (hijos creados al ramificar, más la raíz), `nodosExpandidos` (sacados de la cola
+y ramificados), `nodosArbolPodados` (descartados por la cota) y `nodosArbolCompleto`
+($\sum_{i=0}^{k} k!/(k-i)!$, el árbol sin poda). `podaEfectiva` = 1 − generados / árbol completo.
+
+**Complejidad:** $O(k! \cdot k)$ en el peor caso, con *k* estaciones pedidas (árbol de permutaciones; la cota de
+cada hijo se calcula en $O(k)$), más $O(k^2 (V+E)\log V)$ para la matriz de Dijkstra.
+**Espacio auxiliar:** $O(k! \cdot k)$ en el peor caso (nodos pendientes en la cola, cada uno con su camino).
+**Estructura usada:** cola de prioridad (`PriorityQueue`) ordenada por cota inferior (exploración *best-first*),
+máscara de bits con las estaciones visitadas y matriz `int[][]` de costos mínimos entre los puntos.
