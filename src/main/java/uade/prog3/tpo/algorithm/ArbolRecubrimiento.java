@@ -43,15 +43,6 @@ public class ArbolRecubrimiento {
     ) {
     }
 
-    /**
-     * Estructura compatible con el scaffold original del docente.
-     */
-    public record AristaScaffold(String origen, String destino, double costo) {
-    }
-
-    public record Mst(List<AristaScaffold> aristas, double costoTotal) {
-    }
-
     private final Ordenamiento ordenamiento = new Ordenamiento();
 
     /**
@@ -184,27 +175,5 @@ public class ArbolRecubrimiento {
         }
 
         return new ResultadoMst("Kruskal (con Union-Find propio)", costoTotal, aristasSeleccionadas);
-    }
-
-    /**
-     * Adaptador para Prim compatible con el scaffold del docente.
-     */
-    public Mst primScaffold(Grafo grafo, String origenId) {
-        ResultadoMst res = prim(grafo, origenId);
-        List<AristaScaffold> list = res.aristas().stream()
-                .map(a -> new AristaScaffold(a.origenId(), a.destinoId(), (double) a.costo()))
-                .toList();
-        return new Mst(list, (double) res.costoTotal());
-    }
-
-    /**
-     * Adaptador para Kruskal compatible con el scaffold del docente.
-     */
-    public Mst kruskalScaffold(Grafo grafo) {
-        ResultadoMst res = kruskal(grafo);
-        List<AristaScaffold> list = res.aristas().stream()
-                .map(a -> new AristaScaffold(a.origenId(), a.destinoId(), (double) a.costo()))
-                .toList();
-        return new Mst(list, (double) res.costoTotal());
     }
 }

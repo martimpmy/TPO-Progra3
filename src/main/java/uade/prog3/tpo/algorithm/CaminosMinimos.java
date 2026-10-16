@@ -44,12 +44,6 @@ public class CaminosMinimos {
     }
 
     /**
-     * Estructura compatible con el scaffold original de la cátedra.
-     */
-    public record Camino(List<String> vertices, double costoTotal) {
-    }
-
-    /**
      * Calcula la trayectoria óptima en consumo energético mediante Dijkstra con Min-Heap.
      *
      * @param grafo     Grafo espacial cargado en memoria.
@@ -203,13 +197,5 @@ public class CaminosMinimos {
         }
 
         return new ResultadoDesdeOrigen(dist, nodosExpandidos, aristasExaminadas);
-    }
-
-    /**
-     * Adaptador para compatibilidad estricta con el scaffold original del docente.
-     */
-    public Camino dijkstraScaffold(Grafo grafo, String origenId, String destinoId) {
-        ResultadoDijkstra r = dijkstra(grafo, origenId, destinoId);
-        return new Camino(r.caminoIds(), (double) r.consumoTotal());
     }
 }

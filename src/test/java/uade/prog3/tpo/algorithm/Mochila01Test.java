@@ -125,4 +125,40 @@ class Mochila01Test {
         assertThatThrownBy(() -> mochila.resolver(CONTRAEJEMPLO, -1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("Pesos con más de 6 decimales se rechazan (la matriz DP necesita pesos escalables a enteros)")
+    void demasiadosDecimales() {
+        Mochila01 mochila = new Mochila01();
+
+        assertThatThrownBy(() -> mochila.resolver(
+                java.util.List.of(new Mineral("Polvo", 0.1234567, 10)), 1))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Capacidad negativa, infinita o NaN y minerales nulos lanzan IllegalArgumentException")
+    void entradasInvalidas() {
+        Mochila01 mochila = new Mochila01();
+        var uno = java.util.List.of(new Mineral("A", 1, 1));
+
+        assertThatThrownBy(() -> mochila.resolver(uno, -1)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> mochila.resolver(uno, Double.POSITIVE_INFINITY)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> mochila.resolver(uno, Double.NaN)).isInstanceOf(IllegalArgumentException.class);
+        java.util.List<Mineral> conNulo = new java.util.ArrayList<>();
+        conNulo.add(null);
+        assertThatThrownBy(() -> mochila.resolver(conNulo, 5)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Un mineral más pesado que toda la bodega nunca se elige, aunque valga mucho")
+    void mineralQueSuperaLaBodega() {
+        ResultadoMochila r = mochila.resolver(List.of(
+                new Mineral("Asteroide", 50, 5000),
+                new Mineral("Chico", 2, 10)), 10);
+
+        assertThat(r.minerales()).extracting(Mineral::getNombre).containsExactly("Chico");
+        assertThat(r.valorTotal()).isEqualTo(10.0);
+        assertThat(r.pesoOcupado()).isEqualTo(2.0);
+    }
 }

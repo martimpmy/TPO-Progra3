@@ -74,4 +74,39 @@ class UnionFindTest {
         assertThatThrownBy(() -> uf.find(3))
                 .isInstanceOf(IndexOutOfBoundsException.class);
     }
+
+    @Test
+    @DisplayName("Unión por rango: el árbol más bajo se cuelga del más alto, en ambos sentidos")
+    void unionPorRango() {
+        UnionFind uf = new UnionFind(4);
+        uf.union(0, 1);            // rango(0) pasa a 1; 0 es la raíz
+        int raiz = uf.find(0);
+
+        // El primer argumento tiene MENOR rango: igual queda colgado de la raíz más alta
+        assertThat(uf.union(2, 0)).isTrue();
+        assertThat(uf.find(2)).isEqualTo(raiz);
+
+        // El primer argumento tiene MAYOR rango
+        assertThat(uf.union(0, 3)).isTrue();
+        assertThat(uf.find(3)).isEqualTo(raiz);
+        assertThat(uf.getCantidadComponentes()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Unir elementos ya conectados devuelve false (así Kruskal detecta el ciclo)")
+    void unionRepetidaDetectaCiclo() {
+        UnionFind uf = new UnionFind(3);
+        uf.union(0, 1);
+        uf.union(1, 2);
+
+        assertThat(uf.union(0, 2)).isFalse();
+        assertThat(uf.getCantidadComponentes()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Tamaño negativo lanza IllegalArgumentException; tamaño 0 es válido")
+    void tamanioInvalido() {
+        assertThatThrownBy(() -> new UnionFind(-1)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(new UnionFind(0).getCantidadComponentes()).isZero();
+    }
 }
