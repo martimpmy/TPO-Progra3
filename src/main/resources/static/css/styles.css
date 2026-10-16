@@ -231,3 +231,10 @@ select:disabled, input:disabled { opacity: 0.5; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
+
+/* ---------- Reparto (Hito 11) ---------- */
+.lista-chequeo { border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; }
+.lista-chequeo legend { font-size: 0.78rem; color: var(--tenue); padding: 0 4px; }
+.lista-chequeo__opciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; margin-bottom: 8px; }
+.lista-chequeo__opciones label { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer; }
+#panel-reparto .nota + .nota { margin-top: 12px; }
