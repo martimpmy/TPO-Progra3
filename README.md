@@ -5,7 +5,11 @@ API REST en **Java 21 + Spring Boot 3 + Neo4j AuraDB** donde todos los algoritmo
 (ordenamiento, greedy, grafos, programación dinámica, backtracking y branch & bound)
 están implementados a mano, sin `Collections.sort()` ni librerías de grafos.
 
-**Integrantes:** Herrera, Alvaro Manuel · Mendoza, Martina · Traversi, María Paz
+**Integrantes:**
+
+- **Herrera, Alvaro Manuel** (LU: 1164449) — [@manuherrera09](https://github.com/manuherrera09)
+- **Mendoza, Martina** (LU: 1185381) — [@martimpmy](https://github.com/martimpmy)
+- **Traversi, María Paz** (LU: 1210230) — [@Maipi0512](https://github.com/Maipi0512)
 
 ## Dominio galáctico
 
@@ -49,6 +53,22 @@ KEPLER–NOVA 14 · ORION–NOVA 11 · ORION–CITADEL 19 · NOVA–CITADEL 7.
 
 El grafo se carga automáticamente al iniciar si la base está vacía
 ([`db/seed-dominio.cypher`](src/main/resources/db/seed-dominio.cypher)).
+
+```mermaid
+flowchart TD
+    SOL["1 · Base Solar (SOL)"] ---|12 CA| ALPHA["2 · Alpha Centauri (ALPHA)"]
+    SOL ---|25 CA| SIRIUS["3 · Puerto Sirio (SIRIUS)"]
+    ALPHA ---|8 CA| SIRIUS
+    ALPHA ---|18 CA| VEGA["4 · Minas de Vega (VEGA)"]
+    SIRIUS ---|15 CA| KEPLER["5 · Colonia Kepler (KEPLER)"]
+    VEGA ---|10 CA| KEPLER
+    VEGA ---|22 CA| ORION["6 · Nebulosa Orión (ORION)"]
+    KEPLER ---|9 CA| ORION
+    KEPLER ---|14 CA| NOVA["7 · Puesto Nova (NOVA)"]
+    ORION ---|11 CA| NOVA
+    ORION ---|19 CA| CITADEL["8 · Ciudadela Omega (CITADEL)"]
+    NOVA ---|7 CA| CITADEL
+```
 
 ### Las tres preguntas de validación del dominio
 
@@ -106,7 +126,7 @@ instancia de Neo4j AuraDB.
    ```bash
    ./mvnw spring-boot:run
    ```
-3. Abrir la consola web en http://localhost:8080 o probar la API:
+3. Abrir la consola web en http://localhost:8080, el modo juego por niveles en http://localhost:8080/juego.html, o probar la API:
    ```bash
    curl localhost:8080/api/grafo/resumen
    ```
@@ -126,3 +146,13 @@ El mismo comando genera el informe de cobertura en `target/site/jacoco/index.htm
 - [Informe de complejidades asintóticas](docs/COMPLEJIDADES.md)
 - [Auditoría de tests y cobertura](docs/AUDITORIA-TESTS.md)
 - [Checklist de entrega](docs/CHECKLIST-ENTREGA.md)
+
+## Uso de IA
+
+En conformidad con las pautas de honestidad académica de la materia, se declara que para la realización de este proyecto se contó con el apoyo de las siguientes herramientas de inteligencia artificial generativa: **Google Gemini**, **Antigravity** y **Claude Code**.
+
+Tareas en las que se utilizó asistencia de IA:
+
+- **Modelado y consistencia del dominio:** Estructuración conceptual de la temática espacial ("Odisea Galáctica"), verificando que cumpliera con los requisitos de grafo ponderado, conexo y no bipartito con 8 vértices y 12 aristas.
+- **Diseño de pruebas numéricas y casos borde:** Validación matemática previa de las matrices de distancias mínimas (Dijkstra y Floyd-Warshall), del árbol generador mínimo (Prim y Kruskal), del contraejemplo de Mochila 0/1 frente a Greedy y asistencia en la batería de tests unitarios.
+- **Análisis teórico y documentación:** Verificación de parámetros de recurrencias ($a, b, k$) para la resolución mediante el Teorema Maestro, redacción y formateo de la documentación técnica en Markdown, y asistencia en el maquetado de la interfaz web estática (`index.html` y `juego.html`).
